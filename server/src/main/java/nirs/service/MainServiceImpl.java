@@ -113,7 +113,7 @@ public class MainServiceImpl implements MainService {
     }
 
     private class Storage {
-        public String username = "zetro";
+        public String username = "Zetro";
         public String password = "123";
         public String firstName = "Dmitry";
         public String lastName = "Korobov";
