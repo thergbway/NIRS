@@ -118,6 +118,12 @@
             <version>2.5</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.github.javafaker</groupId>
+            <artifactId>javafaker</artifactId>
+            <version>0.10</version>
+        </dependency>
+
     </dependencies>
 
     <build>
