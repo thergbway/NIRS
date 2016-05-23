@@ -1,7 +1,7 @@
 package nirs.config;
 
-import nirs.api.GreetingService;
-import nirs.service.GreetingServiceImpl;
+import nirs.api.MainService;
+import nirs.service.MainServiceImpl;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -51,16 +51,16 @@ public class AppConfig {
     }
 
     @Bean
-    public GreetingService greetingService() {
-        return new GreetingServiceImpl();
+    public MainService mainService() {
+        return new MainServiceImpl();
     }
 
     @Bean(name = "/api")
     @Autowired
-    public HessianServiceExporter hessianServiceExporter(GreetingService greetingService) {
+    public HessianServiceExporter hessianServiceExporter(MainService mainService) {
         HessianServiceExporter exporter = new HessianServiceExporter();
-        exporter.setService(greetingService);
-        exporter.setServiceInterface(GreetingService.class);
+        exporter.setService(mainService);
+        exporter.setServiceInterface(MainService.class);
 
         return exporter;
     }

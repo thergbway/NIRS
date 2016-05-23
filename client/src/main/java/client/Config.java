@@ -1,6 +1,7 @@
 package client;
 
-import nirs.api.GreetingService;
+import nirs.api.MainService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -19,12 +20,12 @@ public class Config {
         return pspc;
     }
 
-    @Bean(name = "greetingService")
-    public HessianProxyFactoryBean hessianProxyFactoryBean() {
+    @Bean(name = "mainService")
+    public HessianProxyFactoryBean hessianProxyFactoryBean(@Value("${api.url}") String apiUrl) {
         HessianProxyFactoryBean bean = new HessianProxyFactoryBean();
 
-        bean.setServiceUrl("http://localhost:8080/api");
-        bean.setServiceInterface(GreetingService.class);
+        bean.setServiceUrl(apiUrl );
+        bean.setServiceInterface(MainService.class);
 
         return bean;
     }
