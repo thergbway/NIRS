@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+import java.util.Random;
 
 @Service
 public class MainServiceImpl implements MainService {
@@ -24,21 +25,17 @@ public class MainServiceImpl implements MainService {
     @Autowired
     private DB nirsDB;
 
-    @Override
-    public String getGreeting(String name) {
-        return "Hello " + name + "!";
-    }
+    private Storage storage = new Storage();
 
-    @Override
     public String upload(String filename, InputStream is) throws IOException {
         int bytesRead = 0;
         try {
-            byte[] bytes = new byte[1024*1024*5];
+            byte[] bytes = new byte[1024 * 1024 * 5];
             int currReadBytes;
             while ((currReadBytes = is.read(bytes)) != -1) {
                 bytesRead += currReadBytes;
-                if((bytesRead % (1024*1024*5)) == 0)
-                    System.out.println("... " + (double)bytesRead/1024.0/1024.0 + " MB read");
+                if ((bytesRead % (1024 * 1024 * 5)) == 0)
+                    System.out.println("... " + (double) bytesRead / 1024.0 / 1024.0 + " MB read");
             }
         } finally {
             is.close();
@@ -49,7 +46,6 @@ public class MainServiceImpl implements MainService {
         return "Read " + bytesRead + " bytes";
     }
 
-    @Override
     public String uploadToMongo(String filename, InputStream is) throws IOException {
         GridFS fs = new GridFS(nirsDB);
 
@@ -59,24 +55,41 @@ public class MainServiceImpl implements MainService {
             file.save();
 
             return file.toString();
-        }finally {
+        } finally {
             is.close();
         }
     }
 
     @Override
     public void addNewUser(String username, String password, String firstName, String lastName, String email) throws UserExistsException, EmailExistsException {
+        if(storage.username.equals(username))
+            throw new UserExistsException(username);
+        if(storage.email.equals(email))
+            throw new EmailExistsException(email);
 
+        storage.username = username;
+        storage.password = password;
+        storage.firstName = firstName;
+        storage.lastName = lastName;
+        storage.email = email;
+
+        storage.generateNewToken();
     }
 
     @Override
     public String getToken(String username, String password) throws InvalidCredentialsException {
-        return null;
+        if(!storage.username.equals(username) || !storage.password.equals(password))
+            throw new InvalidCredentialsException();
+
+        return storage.token;
     }
 
     @Override
     public UserInfo getUserInfo(String token) throws InvalidTokenException {
-        return null;
+        if(!storage.token.equals(token))
+            throw new InvalidTokenException();
+
+        return new UserInfo(storage.firstName, storage.lastName, storage.username, storage.email);
     }
 
     @Override
@@ -96,6 +109,33 @@ public class MainServiceImpl implements MainService {
 
     @Override
     public void uploadFile(String token, String filename, Cipher cipher, InputStream in) throws InvalidTokenException {
+
+    }
+
+    private class Storage {
+        public String username = "zetro";
+        public String password = "123";
+        public String firstName = "Dmitry";
+        public String lastName = "Korobov";
+        public String email = "zps@gmail.com";
+        public String token;
+        public List<FileInfo> fileInfos;
+        public List<byte[]> fileContents;
+
+        public Storage() {
+            generateNewToken();
+            generateFiles();
+        }
+
+        public void generateFiles() {
+
+        }
+
+        public void generateNewToken() {
+            token = String.valueOf(((Double) (new Random().nextDouble())).hashCode());
+        }
+
+
 
     }
 }

@@ -7,17 +7,10 @@ import nirs.api.exceptions.UserExistsException;
 import nirs.api.model.FileInfo;
 import nirs.api.model.UserInfo;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
 public interface MainService {
-
-    String getGreeting(String name);
-
-    String upload(String filename, InputStream is) throws IOException;
-
-    String uploadToMongo(String filename, InputStream is) throws IOException;
 
     void addNewUser(String username, String password, String firstName, String lastName, String email)
         throws UserExistsException, EmailExistsException;
