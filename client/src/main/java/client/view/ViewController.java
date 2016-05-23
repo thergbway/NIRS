@@ -51,10 +51,7 @@ public class ViewController implements Initializable {
     private Button loginButton;
 
     @FXML
-    private Button signInButton;
-    @FXML
     private TextField loginTextField;
-
     @FXML
     private PasswordField passwordTextField;
 
@@ -375,7 +372,6 @@ public class ViewController implements Initializable {
                     showSignInAlert(UserInfo.builder()
                             .firstName(firstNameTextField.getText().trim())
                             .lastName(lastNameTextField.getText().trim())
-//                            .username(userNameTextField.getText().trim())
                             .email(emailTextField.getText().trim())
                             .build());
                 } catch (EmailExistsException e) {
@@ -384,7 +380,6 @@ public class ViewController implements Initializable {
                             .firstName(firstNameTextField.getText().trim())
                             .lastName(lastNameTextField.getText().trim())
                             .username(userNameTextField.getText().trim())
-//                            .email(emailTextField.getText().trim())
                             .build());
                 }
             }

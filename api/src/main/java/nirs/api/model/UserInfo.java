@@ -3,12 +3,13 @@ package nirs.api.model;
 import java.io.Serializable;
 
 public class UserInfo implements Serializable{
+
     private final String firstName;
     private final String lastName;
     private final String username;
     private final String email;
 
-    public UserInfo(String firstName, String lastName, String username, String email) {
+    private UserInfo(String firstName, String lastName, String username, String email) {
         this.firstName = firstName;
         this.lastName = lastName;
         this.username = username;
@@ -65,7 +66,6 @@ public class UserInfo implements Serializable{
         public UserInfo build() {
             return new UserInfo(firstName, lastName, username, email);
         }
-
 
     }
 }

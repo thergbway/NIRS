@@ -16,7 +16,7 @@
             <PasswordField fx:id="passwordTextField" layoutX="365.0" layoutY="292.0" prefHeight="25.0" prefWidth="270.0" promptText="password" />
             <TextField fx:id="loginTextField" layoutX="365.0" layoutY="258.0" prefHeight="25.0" prefWidth="270.0" promptText="login" />
             <Button fx:id="loginButton" layoutX="501.0" layoutY="327.0" mnemonicParsing="false" onAction="#onLoginRequest" prefHeight="25.0" prefWidth="134.0" text="Login" />
-            <Button fx:id="signInButton" layoutX="365.0" layoutY="327.0" mnemonicParsing="false" onAction="#onSignInRequest" prefHeight="25.0" prefWidth="127.0" text="Sign in" />
+            <Button layoutX="365.0" layoutY="327.0" mnemonicParsing="false" onAction="#onSignInRequest" prefHeight="25.0" prefWidth="127.0" text="Sign in" />
          </children>
       </AnchorPane>
       <AnchorPane fx:id="tableViewPane" prefHeight="609.0" prefWidth="1000.0">

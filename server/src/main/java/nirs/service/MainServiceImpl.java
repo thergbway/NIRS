@@ -76,8 +76,12 @@ public class MainServiceImpl implements MainService {
     public UserInfo getUserInfo(String token) throws InvalidTokenException {
         if (!storage.token.equals(token))
             throw new InvalidTokenException();
-
-        return new UserInfo(storage.firstName, storage.lastName, storage.username, storage.email);
+        return UserInfo.builder()
+                .firstName(storage.firstName)
+                .lastName(storage.lastName)
+                .username(storage.username)
+                .email(storage.email)
+                .build();
     }
 
     @Override
@@ -95,13 +99,13 @@ public class MainServiceImpl implements MainService {
 
         int indexOfFileToDelete = -1;
         for (int i = 0; i < indexOfFileToDelete; i++) {
-            if(storage.fileInfos.get(i).getId().equals(id)) {
+            if (storage.fileInfos.get(i).getId().equals(id)) {
                 indexOfFileToDelete = i;
                 break;
             }
         }
 
-        if(indexOfFileToDelete == -1)
+        if (indexOfFileToDelete == -1)
             return;
 
         storage.fileInfos.remove(indexOfFileToDelete);
@@ -115,7 +119,7 @@ public class MainServiceImpl implements MainService {
 
         int indexOfFileToDownload = -1;
         for (int i = 0; i < indexOfFileToDownload; i++) {
-            if(storage.fileInfos.get(i).getId().equals(id)) {
+            if (storage.fileInfos.get(i).getId().equals(id)) {
                 indexOfFileToDownload = i;
                 break;
             }
@@ -133,13 +137,14 @@ public class MainServiceImpl implements MainService {
 
         Random rand = new Random();
 
-        storage.fileInfos.add(new FileInfo(
-            String.valueOf(storage.fileInfos.size()),
-            filename,
-            Instant.now(),
-            (long) rand.nextInt(1024 * 1024 * 200),
-            cipher
-        ));
+        storage.fileInfos
+                .add(FileInfo.builder()
+                        .id(String.valueOf(storage.fileInfos.size()))
+                        .filename(filename)
+                        .createdInstant(Instant.now())
+                        .size((long) rand.nextInt(1024 * 1024 * 200))
+                        .cipher(cipher)
+                        .build());
 
         try {
             storage.fileContents.add(IOUtils.toByteArray(in));
@@ -172,13 +177,12 @@ public class MainServiceImpl implements MainService {
             Faker faker = new Faker();
 
             for (int i = 0; i < filesCount; i++) {
-                FileInfo fileInfo = new FileInfo(
-                    String.valueOf(i),
-                    faker.app().name(),
-                    Instant.now().minus(rand.nextInt(1500), ChronoUnit.DAYS),
-                    (long) rand.nextInt(1024 * 1024 * 200),
-                    Cipher.values()[rand.nextInt(Cipher.values().length)]
-                );
+                FileInfo fileInfo = FileInfo.builder()
+                        .id(String.valueOf(i))
+                        .filename(faker.app().name())
+                        .createdInstant(Instant.now().minus(rand.nextInt(1500), ChronoUnit.DAYS))
+                        .cipher(Cipher.values()[rand.nextInt(Cipher.values().length)])
+                        .build();
 
                 int textFactor = rand.nextInt(100);
                 String content = faker.chuckNorris().fact();
