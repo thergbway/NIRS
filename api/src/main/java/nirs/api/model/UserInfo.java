@@ -1,6 +1,8 @@
 package nirs.api.model;
 
-public class UserInfo {
+import java.io.Serializable;
+
+public class UserInfo implements Serializable{
     private final String firstName;
     private final String lastName;
     private final String username;

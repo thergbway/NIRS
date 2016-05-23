@@ -2,9 +2,10 @@ package nirs.api.model;
 
 import nirs.api.Cipher;
 
+import java.io.Serializable;
 import java.time.Instant;
 
-public class FileInfo {
+public class FileInfo implements Serializable{
     private final String id;
     private final String filename;
     private final Instant createdInstant;
