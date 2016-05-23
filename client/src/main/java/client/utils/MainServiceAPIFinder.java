@@ -4,8 +4,6 @@ import com.caucho.hessian.client.HessianProxyFactory;
 import nirs.api.MainService;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Properties;
 
 public final class MainServiceAPIFinder {
@@ -18,7 +16,7 @@ public final class MainServiceAPIFinder {
 
         try {
             properties
-                    .load(Files.newInputStream(Paths.get("C:/Users/Zetro/IdeaProjects/NIRS/client/src/main/resources/main.properties")));
+                    .load(MainServiceAPIFinder.class.getResourceAsStream("/main.properties"));
 
             mainService = (MainService) new HessianProxyFactory()
                     .create(MainService.class, properties.getProperty("api.url"));
