@@ -24,7 +24,7 @@
             <ToolBar nodeOrientation="RIGHT_TO_LEFT" prefHeight="40.0" prefWidth="1000.0">
               <items>
                 <Button fx:id="logoutButton" onAction="#onLogoutRequest" mnemonicParsing="false" text="Logout" />
-                  <Label fx:id="loginLabel" />
+                  <Label fx:id="userInfoLabel" />
               </items>
             </ToolBar>
             <ToolBar layoutY="569.0" nodeOrientation="RIGHT_TO_LEFT" prefHeight="40.0" prefWidth="1000.0">

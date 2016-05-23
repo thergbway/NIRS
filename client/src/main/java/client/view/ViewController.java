@@ -5,9 +5,13 @@ import client.utils.MainServiceAPIFinder;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.AnchorPane;
 import nirs.api.MainService;
 import nirs.api.exceptions.InvalidCredentialsException;
+import nirs.api.exceptions.InvalidTokenException;
+import nirs.api.model.UserInfo;
 
 import java.net.URL;
 import java.util.ResourceBundle;
@@ -15,7 +19,7 @@ import java.util.ResourceBundle;
 public class ViewController implements Initializable {
 
     @FXML
-    private Label loginLabel;
+    private Label userInfoLabel;
     @FXML
     private AnchorPane tableViewPane;
     @FXML
@@ -51,16 +55,33 @@ public class ViewController implements Initializable {
     private String token;
 
     public void onLogoutRequest() {
-
-//        setLoginPaneVisible(true);
+        resetToken();
+        resetTableViewControls();
+        setLoginPaneVisible(true);
     }
 
     public void onLoginRequest() {
         try {
             token = mainService
                     .getToken(loginTextField.getText().trim(), passwordTextField.getText().trim());
+
+            UserInfo userInfo = mainService
+                    .getUserInfo(token);
+
+            StringBuilder userInfoLabelTextBuilder = new StringBuilder(userInfo.getFirstName().concat(" ").concat(userInfo.getLastName()));
+
+            userInfoLabelTextBuilder
+                    .append(" (")
+                    .append(userInfo.getUsername())
+                    .append(", ")
+                    .append(userInfo.getEmail())
+                    .append(")");
+
+            userInfoLabel
+                    .setText(userInfoLabelTextBuilder.toString());
+
             setLoginPaneVisible(false);
-        } catch (InvalidCredentialsException e) {
+        } catch (InvalidCredentialsException | InvalidTokenException e) {
             showInvalidCredentialAlert(e);
         }
     }
@@ -86,12 +107,12 @@ public class ViewController implements Initializable {
         mainService = MainServiceAPIFinder.findProxy();
 
         loginTextField
-                .setOnKeyReleased(event -> checkLoginButtonAvailability());
+                .setOnKeyReleased(this::checkLoginButtonAvailability);
         passwordTextField
-                .setOnKeyReleased(event -> checkLoginButtonAvailability());
+                .setOnKeyReleased(this::checkLoginButtonAvailability);
 
         setColumnCellFactory();
-        checkLoginButtonAvailability();
+        checkLoginButtonAvailability(null);
         setLoginPaneVisible(true);
     }
 
@@ -113,9 +134,11 @@ public class ViewController implements Initializable {
                 .setVisible(isVisible);
         tableViewPane
                 .setVisible(!isVisible);
+        if (isVisible)
+            resetLoginPaneControls();
     }
 
-    private void showInvalidCredentialAlert(InvalidCredentialsException e) {
+    private void showInvalidCredentialAlert(Exception e) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
 
         alert.setTitle(e.getMessage());
@@ -125,12 +148,33 @@ public class ViewController implements Initializable {
         alert.showAndWait();
     }
 
-    private void checkLoginButtonAvailability() {
-        if (loginTextField.getText().isEmpty() | passwordTextField.getText().isEmpty())
+    private void checkLoginButtonAvailability(KeyEvent event) {
+        if (loginTextField.getText().isEmpty() || passwordTextField.getText().isEmpty())
             loginButton
                     .setDisable(true);
         else
             loginButton
                     .setDisable(false);
+
+        if (event != null && event.getCode().equals(KeyCode.ENTER))
+            loginButton.fire();
+    }
+
+    private void resetToken() {
+        token = null;
+    }
+
+    private void resetLoginPaneControls() {
+        loginTextField
+                .clear();
+        passwordTextField
+                .clear();
+        loginButton
+                .setDisable(true);
+    }
+
+    private void resetTableViewControls() {
+        userInfoLabel
+                .setText("");
     }
 }
