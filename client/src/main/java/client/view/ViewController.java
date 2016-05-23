@@ -5,8 +5,6 @@ import client.utils.MainServiceAPIFinder;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.AnchorPane;
 import nirs.api.MainService;
 import nirs.api.exceptions.InvalidCredentialsException;
@@ -87,7 +85,7 @@ public class ViewController implements Initializable {
     }
 
     public void onSignInRequest() {
-
+        showSignInAlert();
     }
 
     public void onDownloadFileRequest() {
@@ -107,12 +105,14 @@ public class ViewController implements Initializable {
         mainService = MainServiceAPIFinder.findProxy();
 
         loginTextField
-                .setOnKeyReleased(this::checkLoginButtonAvailability);
+                .setOnKeyReleased(event -> checkLoginPaneButtonsAvailability());
         passwordTextField
-                .setOnKeyReleased(this::checkLoginButtonAvailability);
+                .setOnKeyReleased(event -> checkLoginPaneButtonsAvailability());
 
         setColumnCellFactory();
-        checkLoginButtonAvailability(null);
+
+        checkLoginPaneButtonsAvailability();
+
         setLoginPaneVisible(true);
     }
 
@@ -148,16 +148,18 @@ public class ViewController implements Initializable {
         alert.showAndWait();
     }
 
-    private void checkLoginButtonAvailability(KeyEvent event) {
-        if (loginTextField.getText().isEmpty() || passwordTextField.getText().isEmpty())
+    private void checkLoginPaneButtonsAvailability() {
+        if (loginTextField.getText().isEmpty() || passwordTextField.getText().isEmpty()) {
             loginButton
                     .setDisable(true);
-        else
+            signInButton
+                    .setDisable(true);
+        } else {
             loginButton
                     .setDisable(false);
-
-        if (event != null && event.getCode().equals(KeyCode.ENTER))
-            loginButton.fire();
+            signInButton
+                    .setDisable(false);
+        }
     }
 
     private void resetToken() {
@@ -176,5 +178,9 @@ public class ViewController implements Initializable {
     private void resetTableViewControls() {
         userInfoLabel
                 .setText("");
+    }
+
+    private void showSignInAlert() {
+
     }
 }
