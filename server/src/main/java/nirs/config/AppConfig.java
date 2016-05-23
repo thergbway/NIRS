@@ -1,5 +1,7 @@
 package nirs.config;
 
+import nirs.api.GreetingService;
+import nirs.service.GreetingServiceImpl;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -8,6 +10,7 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.remoting.caucho.HessianServiceExporter;
 import org.sql2o.QuirksMode;
 import org.sql2o.Sql2o;
 
@@ -45,5 +48,20 @@ public class AppConfig {
     @Autowired
     public Sql2o sql2o(DataSource dataSource) {
         return new Sql2o(dataSource, QuirksMode.PostgreSQL);
+    }
+
+    @Bean
+    public GreetingService greetingService() {
+        return new GreetingServiceImpl();
+    }
+
+    @Bean(name = "/api")
+    @Autowired
+    public HessianServiceExporter hessianServiceExporter(GreetingService greetingService) {
+        HessianServiceExporter exporter = new HessianServiceExporter();
+        exporter.setService(greetingService);
+        exporter.setServiceInterface(GreetingService.class);
+
+        return exporter;
     }
 }
