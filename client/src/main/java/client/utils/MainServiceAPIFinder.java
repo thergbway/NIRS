@@ -4,6 +4,7 @@ import com.caucho.hessian.client.HessianProxyFactory;
 import nirs.api.MainService;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Properties;
 
 public final class MainServiceAPIFinder {
@@ -14,9 +15,11 @@ public final class MainServiceAPIFinder {
 
         Properties properties = new Properties();
 
-        try {
+        try(InputStream stream = MainServiceAPIFinder.class
+                .getResourceAsStream("/main.properties")) {
+
             properties
-                    .load(MainServiceAPIFinder.class.getResourceAsStream("/main.properties"));
+                    .load(stream);
 
             mainService = (MainService) new HessianProxyFactory()
                     .create(MainService.class, properties.getProperty("api.url"));

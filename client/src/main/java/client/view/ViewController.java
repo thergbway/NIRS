@@ -2,16 +2,27 @@ package client.view;
 
 import client.model.TableFile;
 import client.utils.MainServiceAPIFinder;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.GridPane;
+import javafx.stage.Stage;
 import nirs.api.MainService;
+import nirs.api.exceptions.EmailExistsException;
 import nirs.api.exceptions.InvalidCredentialsException;
 import nirs.api.exceptions.InvalidTokenException;
+import nirs.api.exceptions.UserExistsException;
 import nirs.api.model.UserInfo;
 
 import java.net.URL;
+import java.util.Optional;
 import java.util.ResourceBundle;
 
 public class ViewController implements Initializable {
@@ -80,7 +91,7 @@ public class ViewController implements Initializable {
 
             setLoginPaneVisible(false);
         } catch (InvalidCredentialsException | InvalidTokenException e) {
-            showInvalidCredentialAlert(e);
+            showErrorAlert(e);
         }
     }
 
@@ -105,13 +116,13 @@ public class ViewController implements Initializable {
         mainService = MainServiceAPIFinder.findProxy();
 
         loginTextField
-                .setOnKeyReleased(event -> checkLoginPaneButtonsAvailability());
+                .setOnKeyReleased(this::checkLoginButtonAvailability);
         passwordTextField
-                .setOnKeyReleased(event -> checkLoginPaneButtonsAvailability());
+                .setOnKeyReleased(this::checkLoginButtonAvailability);
 
         setColumnCellFactory();
 
-        checkLoginPaneButtonsAvailability();
+        checkLoginButtonAvailability(null);
 
         setLoginPaneVisible(true);
     }
@@ -138,28 +149,33 @@ public class ViewController implements Initializable {
             resetLoginPaneControls();
     }
 
-    private void showInvalidCredentialAlert(Exception e) {
+    private void showErrorAlert(Exception e) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
 
-        alert.setTitle(e.getMessage());
-        alert.setHeaderText("Invalid password or login ");
+        alert.setTitle("Error!");
+        alert.setHeaderText(e.getMessage());
         alert.setContentText("Please, try again");
+
+        ((Stage) alert
+                .getDialogPane()
+                .getScene()
+                .getWindow())
+                .getIcons()
+                .add(new Image(getClass().getResource("/error.png").toString()));
 
         alert.showAndWait();
     }
 
-    private void checkLoginPaneButtonsAvailability() {
+    private void checkLoginButtonAvailability(KeyEvent event) {
         if (loginTextField.getText().isEmpty() || passwordTextField.getText().isEmpty()) {
             loginButton
                     .setDisable(true);
-            signInButton
-                    .setDisable(true);
-        } else {
+        } else
             loginButton
                     .setDisable(false);
-            signInButton
-                    .setDisable(false);
-        }
+
+        if (event != null && event.getCode().equals(KeyCode.ENTER))
+            loginButton.fire();
     }
 
     private void resetToken() {
@@ -181,6 +197,169 @@ public class ViewController implements Initializable {
     }
 
     private void showSignInAlert() {
+        // Create the custom dialog.
+        Dialog<Boolean> dialog = new Dialog<>();
 
+        dialog.setTitle("Sign in");
+
+        ((Stage) dialog
+                .getDialogPane()
+                .getScene()
+                .getWindow())
+                .getIcons()
+                .add(new Image(getClass().getResource("/new_account.png").toString()));
+
+        dialog.setHeaderText("Fill the forms below to sign in");
+
+        ButtonType createAccountButtonType = new ButtonType("Create account", ButtonBar.ButtonData.OK_DONE);
+
+        dialog.getDialogPane()
+                .getButtonTypes()
+                .addAll(createAccountButtonType, ButtonType.CANCEL);
+
+        GridPane grid = new GridPane();
+
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 45, 10, 10));
+
+        TextField firstNameTextField = new TextField();
+        firstNameTextField
+                .setPromptText("first name");
+
+        TextField lastNameTextField = new TextField();
+        lastNameTextField
+                .setPromptText("last name");
+
+        TextField userNameTextField = new TextField();
+        userNameTextField
+                .setPromptText("user name");
+
+        TextField emailTextField = new TextField();
+        emailTextField
+                .setPromptText("email");
+
+        PasswordField passwordField = new PasswordField();
+        passwordField
+                .setPromptText("password");
+
+        PasswordField confirmPasswordField = new PasswordField();
+        confirmPasswordField
+                .setPromptText("confirm password");
+
+        // x, y
+        grid.add(firstNameTextField, 1, 0);
+        grid.add(new Label("First name: "), 0, 0);
+
+        grid.add(lastNameTextField, 1, 1);
+        grid.add(new Label("Last name: "), 0, 1);
+
+        grid.add(userNameTextField, 1, 2);
+        grid.add(new Label("Username: "), 0, 2);
+
+        grid.add(emailTextField, 1, 3);
+        grid.add(new Label("Email: "), 0, 3);
+
+        grid.add(passwordField, 1, 4);
+        grid.add(new Label("Password: "), 0, 4);
+
+        grid.add(confirmPasswordField, 1, 5);
+        grid.add(new Label("Confirm password: "), 0, 5);
+
+        Node createAccountButton = dialog
+                .getDialogPane()
+                .lookupButton(createAccountButtonType);
+
+        createAccountButton
+                .setDisable(true);
+
+        {
+            firstNameTextField.textProperty().addListener((observable, oldValue, newValue) -> {
+                createAccountButton
+                        .setDisable(newValue.trim()
+                                // Short set check!
+                                .isEmpty() || lastNameTextField.getText().trim()
+                                .isEmpty() || userNameTextField.getText().trim()
+                                .isEmpty() || emailTextField.getText().trim()
+                                .isEmpty() || passwordField.getText().trim()
+                                .isEmpty() || confirmPasswordField.getText().trim()
+                                .isEmpty() || !passwordField.getText().trim()
+                                .equals(confirmPasswordField.getText().trim()));
+            });
+
+            lastNameTextField.textProperty().addListener((observable, oldValue, newValue) -> {
+                createAccountButton
+                        .setDisable(newValue.trim()
+                                .isEmpty() || firstNameTextField.getText().trim()
+                                .isEmpty() || userNameTextField.getText().trim()
+                                .isEmpty() || emailTextField.getText().trim()
+                                .isEmpty() || passwordField.getText().trim()
+                                .isEmpty() || confirmPasswordField.getText().trim()
+                                .isEmpty() || !passwordField.getText().trim()
+                                .equals(confirmPasswordField.getText().trim()));
+            });
+
+            userNameTextField.textProperty().addListener((observable, oldValue, newValue) -> {
+                createAccountButton
+                        .setDisable(newValue.trim()
+                                .isEmpty() || lastNameTextField.getText().trim()
+                                .isEmpty() || firstNameTextField.getText().trim()
+                                .isEmpty() || emailTextField.getText().trim()
+                                .isEmpty() || passwordField.getText().trim()
+                                .isEmpty() || confirmPasswordField.getText().trim()
+                                .isEmpty() || !passwordField.getText().trim()
+                                .equals(confirmPasswordField.getText().trim()));
+            });
+
+            passwordField.textProperty().addListener((observable, oldValue, newValue) -> {
+                createAccountButton
+                        .setDisable(newValue.trim()
+                                .isEmpty() || lastNameTextField.getText().trim()
+                                .isEmpty() || userNameTextField.getText().trim()
+                                .isEmpty() || firstNameTextField.getText().trim()
+                                .isEmpty() || emailTextField.getText().trim()
+                                .isEmpty() || confirmPasswordField.getText().trim()
+                                .isEmpty() || !passwordField.getText().trim()
+                                .equals(confirmPasswordField.getText().trim()));
+            });
+
+            confirmPasswordField.textProperty().addListener((observable, oldValue, newValue) -> {
+                createAccountButton
+                        .setDisable(newValue.trim()
+                                .isEmpty() || lastNameTextField.getText().trim()
+                                .isEmpty() || userNameTextField.getText().trim()
+                                .isEmpty() || firstNameTextField.getText().trim()
+                                .isEmpty() || emailTextField.getText().trim()
+                                .isEmpty() || passwordField.getText().trim()
+                                .isEmpty() || !passwordField.getText().trim()
+                                .equals(confirmPasswordField.getText().trim()));
+            });
+        }
+
+        dialog.getDialogPane()
+                .setContent(grid);
+
+        Platform.runLater(firstNameTextField::requestFocus);
+
+        dialog.setResultConverter(dialogButton ->
+                dialogButton == createAccountButtonType);
+
+        Optional<Boolean> result = dialog.showAndWait();
+
+        result.ifPresent(isCreateAccountButtonClicked -> {
+            if (isCreateAccountButtonClicked) {
+                try {
+                    mainService
+                            .addNewUser(userNameTextField.getText().trim(), passwordField.getText(), firstNameTextField.getText().trim(), lastNameTextField.getText().trim(), emailTextField.getText().trim());
+                    loginTextField
+                            .setText(userNameTextField.getText().trim());
+                    passwordTextField
+                            .setText(passwordField.getText().trim());
+                    checkLoginButtonAvailability(null);
+                } catch (UserExistsException | EmailExistsException e) {
+                    showErrorAlert(e);
+                }
+            }
+        });
     }
 }
