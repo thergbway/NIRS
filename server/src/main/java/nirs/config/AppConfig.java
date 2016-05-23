@@ -65,6 +65,8 @@ public class AppConfig {
         exporter.setService(mainService);
         exporter.setServiceInterface(MainService.class);
 
+        exporter.setDebug(true);
+
         return exporter;
     }
 
