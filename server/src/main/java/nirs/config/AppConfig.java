@@ -1,5 +1,8 @@
 package nirs.config;
 
+import com.mongodb.DB;
+import com.mongodb.MongoClient;
+import com.mongodb.MongoClientURI;
 import nirs.api.MainService;
 import nirs.service.MainServiceImpl;
 import org.apache.commons.dbcp2.BasicDataSource;
@@ -63,5 +66,15 @@ public class AppConfig {
         exporter.setServiceInterface(MainService.class);
 
         return exporter;
+    }
+
+    @Bean
+    public DB nirsDB(
+        @Value("${mongo.uri}") String mongoUri,
+        @Value("${mongo.database}") String dbName
+    ) {
+        MongoClient mongoClient = new MongoClient(new MongoClientURI(mongoUri));
+
+        return mongoClient.getDB(dbName);
     }
 }

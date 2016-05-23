@@ -13,6 +13,6 @@ public class Main {
         MainService service = cx.getBean("mainService", MainService.class);
 
         System.out.println(service.getGreeting("some guy"));
-        System.out.println(service.upload("sdf.txt", new FileInputStream("C:\\Users\\AND\\Desktop\\AngularJS для новичка- вчера, сегодня, завтра.mp4")));
+        System.out.println(service.uploadToMongo("sdf.txt", new FileInputStream("C:\\Users\\AND\\Desktop\\AngularJS для новичка- вчера, сегодня, завтра.mp4")));
     }
 }

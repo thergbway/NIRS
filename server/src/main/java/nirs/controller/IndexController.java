@@ -1,5 +1,6 @@
 package nirs.controller;
 
+import com.mongodb.DB;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
@@ -16,6 +17,9 @@ public class IndexController {
 
     @Autowired
     private Sql2o sql2o;
+
+    @Autowired
+    private DB nirsDB;
 
     @RequestMapping(value = "/", method = RequestMethod.GET)
     @ResponseBody
@@ -34,6 +38,18 @@ public class IndexController {
             if (scalar == 25)
                 sb.append("OK");
             else sb.append("FAILED");
+        }
+        sb.append("<br>");
+
+        sb.append("mongo connection exists: ");
+
+        try{
+            nirsDB.createCollection("test_collection", null);
+            nirsDB.getCollection("test_collection").drop();
+
+            sb.append("OK");
+        } catch (Exception ex){
+            sb.append("FAILED");
         }
 
         return sb.toString();
