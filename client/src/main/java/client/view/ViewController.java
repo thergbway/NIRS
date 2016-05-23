@@ -96,7 +96,7 @@ public class ViewController implements Initializable {
     }
 
     public void onSignInRequest() {
-        showSignInAlert();
+        showSignInAlert(null);
     }
 
     public void onDownloadFileRequest() {
@@ -113,6 +113,7 @@ public class ViewController implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+
         mainService = MainServiceAPIFinder.findProxy();
 
         loginTextField
@@ -196,7 +197,7 @@ public class ViewController implements Initializable {
                 .setText("");
     }
 
-    private void showSignInAlert() {
+    private void showSignInAlert(UserInfo userInfo) {
         // Create the custom dialog.
         Dialog<Boolean> dialog = new Dialog<>();
 
@@ -246,6 +247,17 @@ public class ViewController implements Initializable {
         PasswordField confirmPasswordField = new PasswordField();
         confirmPasswordField
                 .setPromptText("confirm password");
+
+        if (userInfo != null) {
+            firstNameTextField
+                    .setText(userInfo.getFirstName());
+            lastNameTextField
+                    .setText(userInfo.getLastName());
+            userNameTextField
+                    .setText(userInfo.getUsername());
+            emailTextField
+                    .setText(userInfo.getEmail());
+        }
 
         // x, y
         grid.add(firstNameTextField, 1, 0);
@@ -358,6 +370,12 @@ public class ViewController implements Initializable {
                     checkLoginButtonAvailability(null);
                 } catch (UserExistsException | EmailExistsException e) {
                     showErrorAlert(e);
+                    showSignInAlert(UserInfo.builder()
+                            .firstName(firstNameTextField.getText().trim())
+                            .lastName(lastNameTextField.getText().trim())
+                            .username(userNameTextField.getText().trim())
+                            .email(emailTextField.getText().trim())
+                            .build());
                 }
             }
         });
