@@ -2,7 +2,6 @@ package client.view;
 
 import client.model.TableFile;
 import client.utils.MainServiceAPIFinder;
-import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
@@ -257,6 +256,11 @@ public class ViewController implements Initializable {
                     .setText(userInfo.getUsername());
             emailTextField
                     .setText(userInfo.getEmail());
+        } else {
+            userNameTextField
+                    .setText(loginTextField.getText().trim());
+            passwordField
+                    .setText(passwordTextField.getText().trim());
         }
 
         // x, y
@@ -351,8 +355,6 @@ public class ViewController implements Initializable {
         dialog.getDialogPane()
                 .setContent(grid);
 
-        Platform.runLater(firstNameTextField::requestFocus);
-
         dialog.setResultConverter(dialogButton ->
                 dialogButton == createAccountButtonType);
 
@@ -368,13 +370,21 @@ public class ViewController implements Initializable {
                     passwordTextField
                             .setText(passwordField.getText().trim());
                     checkLoginButtonAvailability(null);
-                } catch (UserExistsException | EmailExistsException e) {
+                } catch (UserExistsException e) {
+                    showErrorAlert(e);
+                    showSignInAlert(UserInfo.builder()
+                            .firstName(firstNameTextField.getText().trim())
+                            .lastName(lastNameTextField.getText().trim())
+//                            .username(userNameTextField.getText().trim())
+                            .email(emailTextField.getText().trim())
+                            .build());
+                } catch (EmailExistsException e) {
                     showErrorAlert(e);
                     showSignInAlert(UserInfo.builder()
                             .firstName(firstNameTextField.getText().trim())
                             .lastName(lastNameTextField.getText().trim())
                             .username(userNameTextField.getText().trim())
-                            .email(emailTextField.getText().trim())
+//                            .email(emailTextField.getText().trim())
                             .build());
                 }
             }
