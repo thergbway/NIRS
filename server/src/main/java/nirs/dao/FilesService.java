@@ -1,39 +1,76 @@
 package nirs.dao;
 
+import com.mongodb.BasicDBObject;
+import com.mongodb.DBObject;
 import com.mongodb.gridfs.GridFS;
+import com.mongodb.gridfs.GridFSDBFile;
+import com.mongodb.gridfs.GridFSInputFile;
+import nirs.api.Cipher;
 import nirs.api.model.FileInfo;
+import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.io.InputStream;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class FilesService {
     @Autowired
     private GridFS mongoGridFS;
 
-    @Autowired
-    private UserService userService;
+    public List<FileInfo> getFiles(String username) {
 
-    public List<FileInfo> getFiles(String token) {
-//        String username = userService.getUsername(token);
-//
-//        DBObject query = new BasicDBObject("owner", username);
-//        DBObject sort = new BasicDBObject("uploadDate", -1).append("filename", 1);
-//
-//        List<GridFSDBFile> files = mongoGridFS.find(query, sort);
-//
-//        files
-//            .stream()
-//            .map(file -> FileInfo
-//                    .builder()
-//                    .id(file.getId().toString())
-//                    .filename(file.getFilename())
-//                    .size(file.getLength())
-//                    .createdTimestamp(file.getUploadDate().toInstant().getEpochSecond())
-//                .cipher()
-//            )
+        DBObject query = new BasicDBObject("owner", username);
+        DBObject sort = new BasicDBObject("uploadDate", -1).append("filename", 1);
 
-        throw new RuntimeException();
+        List<GridFSDBFile> files = mongoGridFS.find(query, sort);
+
+        return files
+            .stream()
+            .map(file -> FileInfo
+                    .builder()
+                    .id(file.getId().toString())
+                    .filename(file.getFilename())
+                    .size(file.getLength())
+                    .createdTimestamp(file.getUploadDate().toInstant().getEpochSecond())
+                    .cipher(Cipher.valueOf((String) file.get("cipher")))
+                    .build()
+            )
+            .collect(Collectors.toList());
+    }
+
+    public FileInfo getFile(String id) {
+        GridFSDBFile file = mongoGridFS.findOne(new ObjectId(id));
+
+        return FileInfo
+            .builder()
+            .id(file.getId().toString())
+            .filename(file.getFilename())
+            .size(file.getLength())
+            .createdTimestamp(file.getUploadDate().toInstant().getEpochSecond())
+            .cipher(Cipher.valueOf((String) file.get("cipher")))
+            .build();
+    }
+
+    public void deleteFile(String id){
+        mongoGridFS.remove(new ObjectId(id));
+    }
+
+    public InputStream getFileInputStream(String id){
+        return mongoGridFS.find(new ObjectId(id)).getInputStream();
+    }
+
+    public FileInfo uploadFile(String username, String filename, Cipher cipher, InputStream in){
+        GridFSInputFile file = mongoGridFS.createFile(in, true);
+
+        file.setFilename(filename);
+        file.put("owner", username);
+        file.put("cipher", cipher.name());
+
+        file.save();
+
+        return getFile(file.getId().toString());
     }
 }

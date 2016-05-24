@@ -27,5 +27,5 @@ public interface MainService {
 
     InputStream downloadFile(String token, String id) throws InvalidTokenException;
 
-    String uploadFile(String token, String filename, Cipher cipher, InputStream in) throws InvalidTokenException;
+    FileInfo uploadFile(String token, String filename, Cipher cipher, InputStream in) throws InvalidTokenException;
 }
