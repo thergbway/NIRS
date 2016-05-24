@@ -55,19 +55,23 @@ public class FilesService {
             .build();
     }
 
-    public void deleteFile(String id){
+    public void deleteFile(String id) {
         mongoGridFS.remove(new ObjectId(id));
     }
 
-    public byte[] getFilePart(String id, int offset){
+    public byte[] getFilePart(String id, int offset) {
         InputStream in = mongoGridFS.find(new ObjectId(id)).getInputStream();
-        byte[] bytes = new byte[1024 * 64];
-        int bytesRead = 0;
+        byte[] bytes = new byte[1024 * 128];
+        int bytesRead;
         try {
-            bytesRead = in.read(bytes, offset, bytes.length);
+            in.skip(offset);
+            bytesRead = in.read(bytes);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+
+        if (bytesRead == -1)
+            return new byte[0];
 
         byte[] bytesToReturn = new byte[bytesRead];
 
@@ -76,9 +80,10 @@ public class FilesService {
         return bytesToReturn;
     }
 
-    public FileInfo uploadFile(String username, String filename, Cipher cipher, InputStream in){
+    public FileInfo uploadFile(String username, String filename, Cipher cipher, InputStream in) {
         GridFSInputFile file = mongoGridFS.createFile(in, true);
 
+        file.setChunkSize(1024L * 128L);
         file.setFilename(filename);
         file.put("owner", username);
         file.put("cipher", cipher.name());
