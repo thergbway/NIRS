@@ -202,7 +202,7 @@ public class ViewController implements Initializable {
                     .forEach(fileInfo ->
                             fileTableView
                                     .getItems()
-                                    .add(new TableFile(fileInfo.getFilename(), fileInfo.getCreatedInstant(), fileInfo.getSize(), fileInfo.getCipher())));
+                                    .add(new TableFile(fileInfo.getFilename(), fileInfo.getCreatedTimestamp(), fileInfo.getSize(), fileInfo.getCipher())));
         } catch (InvalidTokenException e) {
             showErrorAlert(e);
         }
@@ -305,62 +305,62 @@ public class ViewController implements Initializable {
             firstNameTextField.textProperty().addListener((observable, oldValue, newValue) -> {
                 createAccountButton
                         .setDisable(newValue.trim()
-                                // Short set check!
-                                .isEmpty() || lastNameTextField.getText().trim()
-                                .isEmpty() || userNameTextField.getText().trim()
-                                .isEmpty() || emailTextField.getText().trim()
-                                .isEmpty() || passwordField.getText().trim()
-                                .isEmpty() || confirmPasswordField.getText().trim()
-                                .isEmpty() || !passwordField.getText().trim()
-                                .equals(confirmPasswordField.getText().trim()));
+                            // Short set check!
+                            .isEmpty() || lastNameTextField.getText().trim()
+                            .isEmpty() || userNameTextField.getText().trim()
+                            .isEmpty() || emailTextField.getText().trim()
+                            .isEmpty() || passwordField.getText().trim()
+                            .isEmpty() || confirmPasswordField.getText().trim()
+                            .isEmpty() || !passwordField.getText().trim()
+                            .equals(confirmPasswordField.getText().trim()));
             });
 
             lastNameTextField.textProperty().addListener((observable, oldValue, newValue) -> {
                 createAccountButton
                         .setDisable(newValue.trim()
-                                .isEmpty() || firstNameTextField.getText().trim()
-                                .isEmpty() || userNameTextField.getText().trim()
-                                .isEmpty() || emailTextField.getText().trim()
-                                .isEmpty() || passwordField.getText().trim()
-                                .isEmpty() || confirmPasswordField.getText().trim()
-                                .isEmpty() || !passwordField.getText().trim()
-                                .equals(confirmPasswordField.getText().trim()));
+                            .isEmpty() || firstNameTextField.getText().trim()
+                            .isEmpty() || userNameTextField.getText().trim()
+                            .isEmpty() || emailTextField.getText().trim()
+                            .isEmpty() || passwordField.getText().trim()
+                            .isEmpty() || confirmPasswordField.getText().trim()
+                            .isEmpty() || !passwordField.getText().trim()
+                            .equals(confirmPasswordField.getText().trim()));
             });
 
             userNameTextField.textProperty().addListener((observable, oldValue, newValue) -> {
                 createAccountButton
                         .setDisable(newValue.trim()
-                                .isEmpty() || lastNameTextField.getText().trim()
-                                .isEmpty() || firstNameTextField.getText().trim()
-                                .isEmpty() || emailTextField.getText().trim()
-                                .isEmpty() || passwordField.getText().trim()
-                                .isEmpty() || confirmPasswordField.getText().trim()
-                                .isEmpty() || !passwordField.getText().trim()
-                                .equals(confirmPasswordField.getText().trim()));
+                            .isEmpty() || lastNameTextField.getText().trim()
+                            .isEmpty() || firstNameTextField.getText().trim()
+                            .isEmpty() || emailTextField.getText().trim()
+                            .isEmpty() || passwordField.getText().trim()
+                            .isEmpty() || confirmPasswordField.getText().trim()
+                            .isEmpty() || !passwordField.getText().trim()
+                            .equals(confirmPasswordField.getText().trim()));
             });
 
             passwordField.textProperty().addListener((observable, oldValue, newValue) -> {
                 createAccountButton
                         .setDisable(newValue.trim()
-                                .isEmpty() || lastNameTextField.getText().trim()
-                                .isEmpty() || userNameTextField.getText().trim()
-                                .isEmpty() || firstNameTextField.getText().trim()
-                                .isEmpty() || emailTextField.getText().trim()
-                                .isEmpty() || confirmPasswordField.getText().trim()
-                                .isEmpty() || !passwordField.getText().trim()
-                                .equals(confirmPasswordField.getText().trim()));
+                            .isEmpty() || lastNameTextField.getText().trim()
+                            .isEmpty() || userNameTextField.getText().trim()
+                            .isEmpty() || firstNameTextField.getText().trim()
+                            .isEmpty() || emailTextField.getText().trim()
+                            .isEmpty() || confirmPasswordField.getText().trim()
+                            .isEmpty() || !passwordField.getText().trim()
+                            .equals(confirmPasswordField.getText().trim()));
             });
 
             confirmPasswordField.textProperty().addListener((observable, oldValue, newValue) -> {
                 createAccountButton
                         .setDisable(newValue.trim()
-                                .isEmpty() || lastNameTextField.getText().trim()
-                                .isEmpty() || userNameTextField.getText().trim()
-                                .isEmpty() || firstNameTextField.getText().trim()
-                                .isEmpty() || emailTextField.getText().trim()
-                                .isEmpty() || passwordField.getText().trim()
-                                .isEmpty() || !passwordField.getText().trim()
-                                .equals(confirmPasswordField.getText().trim()));
+                            .isEmpty() || lastNameTextField.getText().trim()
+                            .isEmpty() || userNameTextField.getText().trim()
+                            .isEmpty() || firstNameTextField.getText().trim()
+                            .isEmpty() || emailTextField.getText().trim()
+                            .isEmpty() || passwordField.getText().trim()
+                            .isEmpty() || !passwordField.getText().trim()
+                            .equals(confirmPasswordField.getText().trim()));
             });
         }
 

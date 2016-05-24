@@ -77,11 +77,11 @@ public class MainServiceImpl implements MainService {
         if (!storage.token.equals(token))
             throw new InvalidTokenException();
         return UserInfo.builder()
-                .firstName(storage.firstName)
-                .lastName(storage.lastName)
-                .username(storage.username)
-                .email(storage.email)
-                .build();
+            .firstName(storage.firstName)
+            .lastName(storage.lastName)
+            .username(storage.username)
+            .email(storage.email)
+            .build();
     }
 
     @Override
@@ -138,13 +138,13 @@ public class MainServiceImpl implements MainService {
         Random rand = new Random();
 
         storage.fileInfos
-                .add(FileInfo.builder()
-                        .id(String.valueOf(storage.fileInfos.size()))
-                        .filename(filename)
-                        .createdInstant(Instant.now())
-                        .size((long) rand.nextInt(1024 * 1024 * 200))
-                        .cipher(cipher)
-                        .build());
+            .add(FileInfo.builder()
+                .id(String.valueOf(storage.fileInfos.size()))
+                .filename(filename)
+                .createdTimestamp(Instant.now().getEpochSecond())
+                .size((long) rand.nextInt(1024 * 1024 * 200))
+                .cipher(cipher)
+                .build());
 
         try {
             storage.fileContents.add(IOUtils.toByteArray(in));
@@ -178,11 +178,12 @@ public class MainServiceImpl implements MainService {
 
             for (int i = 0; i < filesCount; i++) {
                 FileInfo fileInfo = FileInfo.builder()
-                        .id(String.valueOf(i))
-                        .filename(faker.app().name())
-                        .createdInstant(Instant.now().minus(rand.nextInt(1500), ChronoUnit.DAYS))
-                        .cipher(Cipher.values()[rand.nextInt(Cipher.values().length)])
-                        .build();
+                    .id(String.valueOf(i))
+                    .filename(faker.app().name())
+                    .createdTimestamp(Instant.now().minus(rand.nextInt(1500), ChronoUnit.DAYS).getEpochSecond())
+                    .size((long) rand.nextInt(1024 * 1024 * 200))
+                    .cipher(Cipher.values()[rand.nextInt(Cipher.values().length)])
+                    .build();
 
                 int textFactor = rand.nextInt(100);
                 String content = faker.chuckNorris().fact();
@@ -203,7 +204,5 @@ public class MainServiceImpl implements MainService {
         public void generateNewToken() {
             token = String.valueOf(((Double) (new Random().nextDouble())).hashCode());
         }
-
-
     }
 }

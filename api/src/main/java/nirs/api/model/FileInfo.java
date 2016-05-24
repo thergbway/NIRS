@@ -3,20 +3,19 @@ package nirs.api.model;
 import nirs.api.Cipher;
 
 import java.io.Serializable;
-import java.time.Instant;
 
 public class FileInfo implements Serializable{
 
-    private final String id;
-    private final String filename;
-    private final Instant createdInstant;
-    private final Long size;
-    private final Cipher cipher;
+    private String id;
+    private String filename;
+    private Long createdTimestamp;
+    private Long size;
+    private Cipher cipher;
 
-    private FileInfo(String id, String filename, Instant createdInstant, Long size, Cipher cipher) {
+    private FileInfo(String id, String filename, Long createdTimestamp, Long size, Cipher cipher) {
         this.id = id;
         this.filename = filename;
-        this.createdInstant = createdInstant;
+        this.createdTimestamp = createdTimestamp;
         this.size = size;
         this.cipher = cipher;
     }
@@ -29,8 +28,8 @@ public class FileInfo implements Serializable{
         return filename;
     }
 
-    public Instant getCreatedInstant() {
-        return createdInstant;
+    public Long getCreatedTimestamp() {
+        return createdTimestamp;
     }
 
     public Long getSize() {
@@ -49,7 +48,7 @@ public class FileInfo implements Serializable{
 
         private String id;
         private String filename;
-        private Instant createdInstant;
+        private Long createdTimestamp;
         private Long size;
         private Cipher cipher;
 
@@ -63,8 +62,8 @@ public class FileInfo implements Serializable{
             return this;
         }
 
-        public FileInfoBuilder createdInstant(Instant createdInstant) {
-            this.createdInstant = createdInstant;
+        public FileInfoBuilder createdTimestamp(Long createdTimestamp) {
+            this.createdTimestamp = createdTimestamp;
             return this;
         }
 
@@ -79,7 +78,7 @@ public class FileInfo implements Serializable{
         }
 
         public FileInfo build() {
-            return new FileInfo(id, filename, createdInstant, size, cipher);
+            return new FileInfo(id, filename, createdTimestamp, size, cipher);
         }
     }
 }
