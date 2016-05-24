@@ -21,9 +21,11 @@ public interface MainService {
 
     List<FileInfo> getFiles(String token) throws InvalidTokenException;
 
+    FileInfo getFile(String token, String id) throws InvalidTokenException;
+
     void deleteFile(String token, String id) throws InvalidTokenException;
 
     InputStream downloadFile(String token, String id) throws InvalidTokenException;
 
-    void uploadFile(String token, String filename, Cipher cipher, InputStream in) throws InvalidTokenException;
+    String uploadFile(String token, String filename, Cipher cipher, InputStream in) throws InvalidTokenException;
 }
