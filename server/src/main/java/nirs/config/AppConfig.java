@@ -1,8 +1,8 @@
 package nirs.config;
 
-import com.mongodb.DB;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
+import com.mongodb.gridfs.GridFS;
 import nirs.api.MainService;
 import nirs.service.MainServiceImpl;
 import org.apache.commons.dbcp2.BasicDataSource;
@@ -71,12 +71,12 @@ public class AppConfig {
     }
 
     @Bean
-    public DB nirsDB(
+    public GridFS nirsMongoDBGridFS(
         @Value("${mongo.uri}") String mongoUri,
         @Value("${mongo.database}") String dbName
     ) {
         MongoClient mongoClient = new MongoClient(new MongoClientURI(mongoUri));
 
-        return mongoClient.getDB(dbName);
+        return new GridFS(mongoClient.getDB(dbName));
     }
 }
