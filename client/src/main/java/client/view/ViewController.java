@@ -34,7 +34,7 @@ public class ViewController implements Initializable {
     private AnchorPane loginPane;
 
     @FXML
-    private TableView<TableFile> tableFileView;
+    private TableView<TableFile> fileTableView;
 
     @FXML
     private TableColumn<TableFile, String> statusColumn;
@@ -61,7 +61,7 @@ public class ViewController implements Initializable {
 
     public void onLogoutRequest() {
         resetToken();
-        resetTableViewControls();
+        resetFileTableViewControls();
         setLoginPaneVisible(true);
     }
 
@@ -84,6 +84,8 @@ public class ViewController implements Initializable {
 
             userInfoLabel
                     .setText(userInfoLabelTextBuilder.toString());
+
+            loadFileTableViewContent();
 
             setLoginPaneVisible(false);
         } catch (InvalidCredentialsException | InvalidTokenException e) {
@@ -117,14 +119,14 @@ public class ViewController implements Initializable {
         passwordTextField
                 .setOnKeyReleased(this::checkLoginButtonAvailability);
 
-        setColumnCellFactory();
+        setColumnCellValueFactory();
 
         checkLoginButtonAvailability(null);
 
         setLoginPaneVisible(true);
     }
 
-    private void setColumnCellFactory() {
+    private void setColumnCellValueFactory() {
         fileNameColumn
                 .setCellValueFactory(param -> param.getValue().fileName);
         createdColumn
@@ -188,9 +190,22 @@ public class ViewController implements Initializable {
                 .setDisable(true);
     }
 
-    private void resetTableViewControls() {
+    private void resetFileTableViewControls() {
         userInfoLabel
                 .setText("");
+    }
+
+    private void loadFileTableViewContent() {
+        try {
+            mainService
+                    .getFiles(token)
+                    .forEach(fileInfo ->
+                            fileTableView
+                                    .getItems()
+                                    .add(new TableFile(fileInfo.getFilename(), fileInfo.getCreatedInstant(), fileInfo.getSize(), fileInfo.getCipher())));
+        } catch (InvalidTokenException e) {
+            showErrorAlert(e);
+        }
     }
 
     private void showSignInAlert(UserInfo userInfo) {
