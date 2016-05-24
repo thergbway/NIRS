@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
 import java.util.List;
-import java.util.function.Consumer;
 
 @Service
 public class MainServiceImpl implements MainService {
@@ -79,11 +78,11 @@ public class MainServiceImpl implements MainService {
     }
 
     @Override
-    public InputStream downloadFile(String token, String id) throws InvalidTokenException {
+    public byte[] downloadFile(String token, String id, int offset) throws InvalidTokenException {
         if (!userService.isValidToken(token))
             throw new InvalidTokenException();
 
-        return filesService.getFileInputStream(id);
+        return filesService.getFilePart(id, offset);
     }
 
     @Override

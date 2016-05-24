@@ -11,6 +11,7 @@ import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -58,8 +59,21 @@ public class FilesService {
         mongoGridFS.remove(new ObjectId(id));
     }
 
-    public InputStream getFileInputStream(String id){
-        return mongoGridFS.find(new ObjectId(id)).getInputStream();
+    public byte[] getFilePart(String id, int offset){
+        InputStream in = mongoGridFS.find(new ObjectId(id)).getInputStream();
+        byte[] bytes = new byte[1024 * 64];
+        int bytesRead = 0;
+        try {
+            bytesRead = in.read(bytes, offset, bytes.length);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        byte[] bytesToReturn = new byte[bytesRead];
+
+        System.arraycopy(bytes, 0, bytesToReturn, 0, bytesRead);
+
+        return bytesToReturn;
     }
 
     public FileInfo uploadFile(String username, String filename, Cipher cipher, InputStream in){

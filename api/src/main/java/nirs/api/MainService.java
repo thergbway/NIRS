@@ -25,7 +25,7 @@ public interface MainService {
 
     void deleteFile(String token, String id) throws InvalidTokenException;
 
-    InputStream downloadFile(String token, String id) throws InvalidTokenException;
+    byte[] downloadFile(String token, String id, int offset) throws InvalidTokenException;
 
     FileInfo uploadFile(String token, String filename, Cipher cipher, InputStream in) throws InvalidTokenException;
 }
