@@ -526,10 +526,10 @@ public class ViewController implements Initializable {
                                                 .execute(() -> {
 
                                                     try {
-                                                        String id = mainService
-                                                                .uploadFile(token, fileToUpload.getName(), Cipher.AES256, ListenableFileInputStream.newListenableStream(fileToUpload, progressConsumer));
 
-                                                        tableFile.setId(id);
+                                                        tableFile.setId(mainService
+                                                                .uploadFile(token, fileToUpload.getName(), Cipher.AES256, ListenableFileInputStream.newListenableStream(fileToUpload, progressConsumer))
+                                                                .getId());
 
                                                         tableFile
                                                                 .status
