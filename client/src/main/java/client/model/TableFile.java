@@ -14,7 +14,10 @@ public class TableFile {
     public final SimpleStringProperty cipher;
     public final SimpleStringProperty status;
 
-    public TableFile(String fileName, Long createdTimestamp, Long size, Cipher cipher) {
+    private String id;
+
+    public TableFile(String fileName, Long createdTimestamp, Long size, Cipher cipher, String id) {
+        this.id = id;
         this.fileName = new SimpleStringProperty(fileName);
         this.created = new SimpleStringProperty(LocalDateTime.ofEpochSecond(createdTimestamp, 0, ZoneOffset.UTC).toString());
         this.size = new SimpleStringProperty(convertToHumanReadable(size));
@@ -22,6 +25,13 @@ public class TableFile {
         this.status = new SimpleStringProperty();
     }
 
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
 
     private String convertToHumanReadable(Long size) {
         return String.format("%1.3f", size.doubleValue() / 1024.0 / 1024.0);

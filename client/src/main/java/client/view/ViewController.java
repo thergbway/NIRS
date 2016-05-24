@@ -1,7 +1,9 @@
 package client.view;
 
 import client.model.TableFile;
+import client.utils.ListenableFileInputStream;
 import client.utils.MainServiceAPIFinder;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
@@ -12,7 +14,9 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.GridPane;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import nirs.api.Cipher;
 import nirs.api.MainService;
 import nirs.api.exceptions.EmailExistsException;
 import nirs.api.exceptions.InvalidCredentialsException;
@@ -20,9 +24,18 @@ import nirs.api.exceptions.InvalidTokenException;
 import nirs.api.exceptions.UserExistsException;
 import nirs.api.model.UserInfo;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.util.Optional;
 import java.util.ResourceBundle;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.function.Consumer;
+
+import static client.model.TableFileStatus.*;
 
 public class ViewController implements Initializable {
 
@@ -55,6 +68,8 @@ public class ViewController implements Initializable {
     @FXML
     private PasswordField passwordTextField;
 
+    private ExecutorService executorService;
+
     private MainService mainService;
 
     private String token;
@@ -73,7 +88,10 @@ public class ViewController implements Initializable {
             UserInfo userInfo = mainService
                     .getUserInfo(token);
 
-            StringBuilder userInfoLabelTextBuilder = new StringBuilder(userInfo.getFirstName().concat(" ").concat(userInfo.getLastName()));
+            StringBuilder userInfoLabelTextBuilder = new StringBuilder(userInfo
+                    .getFirstName()
+                    .concat(" ")
+                    .concat(userInfo.getLastName()));
 
             userInfoLabelTextBuilder
                     .append(" (")
@@ -85,9 +103,12 @@ public class ViewController implements Initializable {
             userInfoLabel
                     .setText(userInfoLabelTextBuilder.toString());
 
+            setColumnCellValueFactory();
+
             loadFileTableViewContent();
 
             setLoginPaneVisible(false);
+
         } catch (InvalidCredentialsException | InvalidTokenException e) {
             showErrorAlert(e);
         }
@@ -99,31 +120,45 @@ public class ViewController implements Initializable {
 
     public void onDownloadFileRequest() {
 
+        TableFile selectedFile = fileTableView
+                .getSelectionModel()
+                .getSelectedItem();
+
+        if (selectedFile != null) downloadFile(selectedFile);
+
     }
 
     public void onAddFileRequest() {
-
+        uploadFile();
     }
 
     public void onDeleteFileRequest() {
-
+        if (fileTableView.getSelectionModel() != null)
+            deleteSelectedTableFile();
     }
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
 
-        mainService = MainServiceAPIFinder.findProxy();
+        mainService = MainServiceAPIFinder
+                .findProxy();
+
+        executorService = Executors
+                .newFixedThreadPool(100);
 
         loginTextField
                 .setOnKeyReleased(this::checkLoginButtonAvailability);
         passwordTextField
                 .setOnKeyReleased(this::checkLoginButtonAvailability);
 
-        setColumnCellValueFactory();
-
         checkLoginButtonAvailability(null);
 
         setLoginPaneVisible(true);
+    }
+
+    public void shutdownExecutorService() {
+        executorService
+                .shutdown();
     }
 
     private void setColumnCellValueFactory() {
@@ -153,7 +188,7 @@ public class ViewController implements Initializable {
 
         alert.setTitle("Error!");
         alert.setHeaderText(e.getMessage());
-        alert.setContentText("Please, try again");
+        alert.setContentText("Please try again");
 
         ((Stage) alert
                 .getDialogPane()
@@ -197,12 +232,17 @@ public class ViewController implements Initializable {
 
     private void loadFileTableViewContent() {
         try {
+
+            fileTableView
+                    .getItems()
+                    .clear();
+
             mainService
                     .getFiles(token)
                     .forEach(fileInfo ->
                             fileTableView
                                     .getItems()
-                                    .add(new TableFile(fileInfo.getFilename(), fileInfo.getCreatedTimestamp(), fileInfo.getSize(), fileInfo.getCipher())));
+                                    .add(new TableFile(fileInfo.getFilename(), fileInfo.getCreatedTimestamp(), fileInfo.getSize(), fileInfo.getCipher(), fileInfo.getId())));
         } catch (InvalidTokenException e) {
             showErrorAlert(e);
         }
@@ -305,62 +345,62 @@ public class ViewController implements Initializable {
             firstNameTextField.textProperty().addListener((observable, oldValue, newValue) -> {
                 createAccountButton
                         .setDisable(newValue.trim()
-                            // Short set check!
-                            .isEmpty() || lastNameTextField.getText().trim()
-                            .isEmpty() || userNameTextField.getText().trim()
-                            .isEmpty() || emailTextField.getText().trim()
-                            .isEmpty() || passwordField.getText().trim()
-                            .isEmpty() || confirmPasswordField.getText().trim()
-                            .isEmpty() || !passwordField.getText().trim()
-                            .equals(confirmPasswordField.getText().trim()));
+                                // Short set check!
+                                .isEmpty() || lastNameTextField.getText().trim()
+                                .isEmpty() || userNameTextField.getText().trim()
+                                .isEmpty() || emailTextField.getText().trim()
+                                .isEmpty() || passwordField.getText().trim()
+                                .isEmpty() || confirmPasswordField.getText().trim()
+                                .isEmpty() || !passwordField.getText().trim()
+                                .equals(confirmPasswordField.getText().trim()));
             });
 
             lastNameTextField.textProperty().addListener((observable, oldValue, newValue) -> {
                 createAccountButton
                         .setDisable(newValue.trim()
-                            .isEmpty() || firstNameTextField.getText().trim()
-                            .isEmpty() || userNameTextField.getText().trim()
-                            .isEmpty() || emailTextField.getText().trim()
-                            .isEmpty() || passwordField.getText().trim()
-                            .isEmpty() || confirmPasswordField.getText().trim()
-                            .isEmpty() || !passwordField.getText().trim()
-                            .equals(confirmPasswordField.getText().trim()));
+                                .isEmpty() || firstNameTextField.getText().trim()
+                                .isEmpty() || userNameTextField.getText().trim()
+                                .isEmpty() || emailTextField.getText().trim()
+                                .isEmpty() || passwordField.getText().trim()
+                                .isEmpty() || confirmPasswordField.getText().trim()
+                                .isEmpty() || !passwordField.getText().trim()
+                                .equals(confirmPasswordField.getText().trim()));
             });
 
             userNameTextField.textProperty().addListener((observable, oldValue, newValue) -> {
                 createAccountButton
                         .setDisable(newValue.trim()
-                            .isEmpty() || lastNameTextField.getText().trim()
-                            .isEmpty() || firstNameTextField.getText().trim()
-                            .isEmpty() || emailTextField.getText().trim()
-                            .isEmpty() || passwordField.getText().trim()
-                            .isEmpty() || confirmPasswordField.getText().trim()
-                            .isEmpty() || !passwordField.getText().trim()
-                            .equals(confirmPasswordField.getText().trim()));
+                                .isEmpty() || lastNameTextField.getText().trim()
+                                .isEmpty() || firstNameTextField.getText().trim()
+                                .isEmpty() || emailTextField.getText().trim()
+                                .isEmpty() || passwordField.getText().trim()
+                                .isEmpty() || confirmPasswordField.getText().trim()
+                                .isEmpty() || !passwordField.getText().trim()
+                                .equals(confirmPasswordField.getText().trim()));
             });
 
             passwordField.textProperty().addListener((observable, oldValue, newValue) -> {
                 createAccountButton
                         .setDisable(newValue.trim()
-                            .isEmpty() || lastNameTextField.getText().trim()
-                            .isEmpty() || userNameTextField.getText().trim()
-                            .isEmpty() || firstNameTextField.getText().trim()
-                            .isEmpty() || emailTextField.getText().trim()
-                            .isEmpty() || confirmPasswordField.getText().trim()
-                            .isEmpty() || !passwordField.getText().trim()
-                            .equals(confirmPasswordField.getText().trim()));
+                                .isEmpty() || lastNameTextField.getText().trim()
+                                .isEmpty() || userNameTextField.getText().trim()
+                                .isEmpty() || firstNameTextField.getText().trim()
+                                .isEmpty() || emailTextField.getText().trim()
+                                .isEmpty() || confirmPasswordField.getText().trim()
+                                .isEmpty() || !passwordField.getText().trim()
+                                .equals(confirmPasswordField.getText().trim()));
             });
 
             confirmPasswordField.textProperty().addListener((observable, oldValue, newValue) -> {
                 createAccountButton
                         .setDisable(newValue.trim()
-                            .isEmpty() || lastNameTextField.getText().trim()
-                            .isEmpty() || userNameTextField.getText().trim()
-                            .isEmpty() || firstNameTextField.getText().trim()
-                            .isEmpty() || emailTextField.getText().trim()
-                            .isEmpty() || passwordField.getText().trim()
-                            .isEmpty() || !passwordField.getText().trim()
-                            .equals(confirmPasswordField.getText().trim()));
+                                .isEmpty() || lastNameTextField.getText().trim()
+                                .isEmpty() || userNameTextField.getText().trim()
+                                .isEmpty() || firstNameTextField.getText().trim()
+                                .isEmpty() || emailTextField.getText().trim()
+                                .isEmpty() || passwordField.getText().trim()
+                                .isEmpty() || !passwordField.getText().trim()
+                                .equals(confirmPasswordField.getText().trim()));
             });
         }
 
@@ -399,5 +439,180 @@ public class ViewController implements Initializable {
                 }
             }
         });
+    }
+
+    private void downloadFile(TableFile selectedFile) {
+
+        FileChooser fileChooser = new FileChooser();
+
+        fileChooser
+                .setInitialFileName(selectedFile.fileName.get());
+
+        fileChooser
+                .setTitle("Save file");
+
+        File fileToSave = fileChooser
+                .showSaveDialog(new Stage());
+
+        if (fileToSave != null)
+            showChooseCipherAlert()
+                    .ifPresent(cipher ->
+                            showCipherKeyAlert()
+                                    .ifPresent(key -> {
+
+                                        Consumer<Integer> progressConsumer = progress ->
+                                                selectedFile
+                                                        .status
+                                                        .set(String.valueOf(DOWNLOADING).concat(" ").concat(String.valueOf(progress).concat("%")));
+
+                                        executorService.execute(() -> {
+
+                                            try (FileOutputStream fileOutputStream = new FileOutputStream(fileToSave)) {
+
+                                                try (InputStream inputStream = ListenableFileInputStream
+                                                        .newListenableStream(9991L, mainService.downloadFile(token, selectedFile.getId()), progressConsumer)) {
+
+                                                    int nextByte;
+
+                                                    while ((nextByte = inputStream.read()) != -1)
+                                                        fileOutputStream
+                                                                .write(nextByte);
+
+                                                } catch (InvalidTokenException e) {
+                                                    showErrorAlert(e);
+                                                }
+
+                                            } catch (IOException e) {
+                                                showErrorAlert(e);
+                                            }
+                                        });
+
+                                    }));
+
+    }
+
+    private void uploadFile() {
+
+        FileChooser fileChooser = new FileChooser();
+
+        fileChooser
+                .setTitle("Choose file to upload");
+
+        File fileToUpload = fileChooser
+                .showOpenDialog(new Stage());
+
+        if (fileToUpload != null)
+            showChooseCipherAlert()
+                    .ifPresent(cipher ->
+                            showCipherKeyAlert()
+                                    .ifPresent(key -> {
+
+                                        TableFile tableFile = new TableFile(fileToUpload.getName(), -1L, -1L, cipher, null);
+
+                                        tableFile
+                                                .status
+                                                .set(String.valueOf(ENCRYPTING));
+
+                                        fileTableView
+                                                .getItems()
+                                                .add(tableFile);
+
+                                        Consumer<Integer> progressConsumer = progress ->
+                                                tableFile
+                                                        .status
+                                                        .set(String.valueOf(UPLOADING).concat(" ").concat(String.valueOf(progress)).concat("%"));
+
+                                        executorService
+                                                .execute(() -> {
+
+                                                    try {
+                                                        String id = mainService
+                                                                .uploadFile(token, fileToUpload.getName(), Cipher.AES256, ListenableFileInputStream.newListenableStream(fileToUpload, progressConsumer));
+
+                                                        tableFile.setId(id);
+
+                                                        tableFile
+                                                                .status
+                                                                .set(String.valueOf(OK));
+
+                                                        loadFileTableViewContent();
+
+                                                    } catch (InvalidTokenException | IOException e) {
+                                                        showErrorAlert(e);
+                                                    }
+
+                                                });
+                                    }));
+    }
+
+    private Optional<Cipher> showChooseCipherAlert() {
+
+        ChoiceDialog<Cipher> dialog = new ChoiceDialog<>(Cipher.AES256, Cipher.values());
+
+        dialog.setTitle("Choose cipher");
+        dialog.setHeaderText("Please choose algorithm to encrypt the file");
+        dialog.setContentText("Choose cipher:");
+
+        return dialog.showAndWait();
+    }
+
+    private Optional<byte[]> showCipherKeyAlert() {
+        // Create the custom dialog.
+        Dialog<String> dialog = new Dialog<>();
+
+        dialog.setTitle("Login Dialog");
+        dialog.setHeaderText("Look, a Custom Login Dialog");
+
+        ButtonType okButtonType = new ButtonType("Ok", ButtonBar.ButtonData.OK_DONE);
+
+        dialog.getDialogPane()
+                .getButtonTypes()
+                .addAll(okButtonType, ButtonType.CANCEL);
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 70, 10, 10));
+
+        PasswordField symmetricKeyTextField = new PasswordField();
+        symmetricKeyTextField
+                .setPromptText("Key");
+
+        grid.add(new Label("Symmetric key:"), 0, 1);
+        grid.add(symmetricKeyTextField, 1, 1);
+
+        Node okButton = dialog
+                .getDialogPane()
+                .lookupButton(okButtonType);
+
+        okButton.setDisable(true);
+
+        symmetricKeyTextField
+                .textProperty()
+                .addListener((observable, oldValue, newValue) -> {
+                    okButton.setDisable(newValue.trim().isEmpty());
+                });
+
+        dialog.getDialogPane()
+                .setContent(grid);
+
+        Platform.runLater(symmetricKeyTextField::requestFocus);
+
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == okButtonType) {
+                return symmetricKeyTextField.getText();
+            }
+            return null;
+        });
+
+        return dialog
+                .showAndWait()
+                .map(String::getBytes);
+    }
+
+    private void deleteSelectedTableFile() {
+        fileTableView
+                .getSelectionModel()
+                .getSelectedItem();
     }
 }

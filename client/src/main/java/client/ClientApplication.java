@@ -1,5 +1,6 @@
 package client;
 
+import client.view.ViewController;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -10,7 +11,10 @@ import javafx.stage.Stage;
 public class ClientApplication extends Application {
     @Override
     public void start(Stage primaryStage) throws Exception {
-        Parent root = FXMLLoader.load(getClass().getResource("/client.fxml"));
+
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/client.fxml"));
+
+        Parent root = loader.load();
 
         primaryStage
                 .setScene(new Scene(root));
@@ -29,7 +33,13 @@ public class ClientApplication extends Application {
                 .setResizable(false);
 
         primaryStage
+                .setOnCloseRequest(event ->
+                        ((ViewController) loader
+                                .getController())
+                                .shutdownExecutorService());
+        primaryStage
                 .show();
+
     }
 
     public static void main(String[] args) {
