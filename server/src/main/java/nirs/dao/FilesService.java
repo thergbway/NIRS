@@ -61,7 +61,7 @@ public class FilesService {
 
     public byte[] getFilePart(String id, int offset) {
         InputStream in = mongoGridFS.find(new ObjectId(id)).getInputStream();
-        byte[] bytes = new byte[1024 * 1024];
+        byte[] bytes = new byte[1024 * 128];
         int bytesRead;
         try {
             in.skip(offset);
@@ -83,7 +83,7 @@ public class FilesService {
     public FileInfo uploadFile(String username, String filename, Cipher cipher, InputStream in) {
         GridFSInputFile file = mongoGridFS.createFile(in, true);
 
-        file.setChunkSize(1024L * 1024L);
+        file.setChunkSize(1024L * 128L);
         file.setFilename(filename);
         file.put("owner", username);
         file.put("cipher", cipher.name());
