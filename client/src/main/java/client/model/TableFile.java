@@ -15,6 +15,7 @@ public class TableFile {
     public final SimpleStringProperty status;
 
     private String id;
+    private long fileSize;
 
     public TableFile(String fileName, Long createdTimestamp, Long size, Cipher cipher, String id) {
         this.id = id;
@@ -23,6 +24,12 @@ public class TableFile {
         this.size = new SimpleStringProperty(convertToHumanReadable(size));
         this.cipher = new SimpleStringProperty(cipher.toString());
         this.status = new SimpleStringProperty();
+
+        fileSize = size;
+    }
+
+    public long getFileSize() {
+        return fileSize;
     }
 
     public String getId() {

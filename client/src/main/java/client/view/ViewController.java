@@ -27,7 +27,6 @@ import nirs.api.model.UserInfo;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URL;
 import java.util.Optional;
 import java.util.ResourceBundle;
@@ -469,20 +468,27 @@ public class ViewController implements Initializable {
 
                                             try (FileOutputStream fileOutputStream = new FileOutputStream(fileToSave)) {
 
-                                                try (InputStream inputStream = ListenableFileInputStream
-                                                        .newListenableStream(9991L, mainService.downloadFilePart(token, selectedFile.getId()), progressConsumer)) {
+                                                int offset = 0;
 
-                                                    int nextByte;
+                                                byte[] filePart;
 
-                                                    while ((nextByte = inputStream.read()) != -1)
-                                                        fileOutputStream
-                                                                .write(nextByte);
+                                                selectedFile.size.get();
 
-                                                } catch (InvalidTokenException e) {
-                                                    showErrorAlert(e);
-                                                }
+                                                do {
+                                                    filePart = mainService
+                                                            .downloadFilePart(token, selectedFile.getId(), offset);
 
-                                            } catch (IOException e) {
+                                                    fileOutputStream
+                                                            .write(filePart);
+
+                                                    offset += filePart.length;
+                                                } while (filePart.length != 0);
+
+                                                selectedFile
+                                                        .status
+                                                        .set(String.valueOf(OK));
+
+                                            } catch (IOException | InvalidTokenException e) {
                                                 showErrorAlert(e);
                                             }
                                         });
