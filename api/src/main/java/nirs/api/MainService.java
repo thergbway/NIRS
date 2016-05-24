@@ -9,7 +9,6 @@ import nirs.api.model.UserInfo;
 
 import java.io.InputStream;
 import java.util.List;
-import java.util.function.Consumer;
 
 public interface MainService {
 
@@ -29,6 +28,4 @@ public interface MainService {
     InputStream downloadFile(String token, String id) throws InvalidTokenException;
 
     FileInfo uploadFile(String token, String filename, Cipher cipher, InputStream in) throws InvalidTokenException;
-
-    void test(Consumer<InputStream> consumer);
 }

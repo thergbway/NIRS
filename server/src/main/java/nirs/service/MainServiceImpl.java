@@ -95,9 +95,4 @@ public class MainServiceImpl implements MainService {
 
         return filesService.uploadFile(username, filename, cipher, in);
     }
-
-    @Override
-    public void test(Consumer<InputStream> consumer) {
-        consumer.accept(filesService.getFileInputStream("5743ef6d296c0e1cac1a3b83"));
-    }
 }
