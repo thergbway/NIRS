@@ -470,7 +470,7 @@ public class ViewController implements Initializable {
                                             try (FileOutputStream fileOutputStream = new FileOutputStream(fileToSave)) {
 
                                                 try (InputStream inputStream = ListenableFileInputStream
-                                                        .newListenableStream(9991L, mainService.downloadFile(token, selectedFile.getId()), progressConsumer)) {
+                                                        .newListenableStream(9991L, mainService.downloadFilePart(token, selectedFile.getId()), progressConsumer)) {
 
                                                     int nextByte;
 

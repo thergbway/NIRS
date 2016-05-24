@@ -78,7 +78,7 @@ public class MainServiceImpl implements MainService {
     }
 
     @Override
-    public byte[] downloadFile(String token, String id, int offset) throws InvalidTokenException {
+    public byte[] downloadFilePart(String token, String id, int offset) throws InvalidTokenException {
         if (!userService.isValidToken(token))
             throw new InvalidTokenException();
 
