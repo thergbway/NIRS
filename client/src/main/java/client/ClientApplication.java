@@ -1,6 +1,5 @@
 package client;
 
-import client.view.ViewController;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -32,11 +31,6 @@ public class ClientApplication extends Application {
         primaryStage
                 .setResizable(false);
 
-        primaryStage
-                .setOnCloseRequest(event ->
-                        ((ViewController) loader
-                                .getController())
-                                .shutdownExecutorService());
         primaryStage
                 .show();
 

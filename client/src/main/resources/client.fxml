@@ -6,20 +6,20 @@
 <?import javafx.scene.layout.AnchorPane?>
 <AnchorPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="609.0" prefWidth="1000.0" xmlns="http://javafx.com/javafx/8" xmlns:fx="http://javafx.com/fxml/1" fx:controller="client.view.ViewController">
    <children>
-      <AnchorPane fx:id="loginPane" prefHeight="603.0" prefWidth="1000.0">
+      <AnchorPane fx:id="welcomePane" prefHeight="603.0" prefWidth="1000.0" visible="true">
          <children>
             <ImageView fitHeight="618.0" fitWidth="1000.0" pickOnBounds="true" preserveRatio="true">
                <image>
                   <Image url="@db_security.jpg" />
                </image>
             </ImageView>
-            <PasswordField fx:id="passwordTextField" layoutX="365.0" layoutY="292.0" prefHeight="25.0" prefWidth="270.0" promptText="password" />
             <TextField fx:id="loginTextField" layoutX="365.0" layoutY="258.0" prefHeight="25.0" prefWidth="270.0" promptText="login" />
-            <Button fx:id="loginButton" layoutX="501.0" layoutY="327.0" mnemonicParsing="false" onAction="#onLoginRequest" prefHeight="25.0" prefWidth="134.0" text="Login" />
+            <PasswordField fx:id="passwordTextField" layoutX="365.0" layoutY="292.0" prefHeight="25.0" prefWidth="270.0" promptText="password" />
+            <Button fx:id="loginButton" disable="true" layoutX="501.0" layoutY="327.0" mnemonicParsing="false" onAction="#onLoginRequest" prefHeight="25.0" prefWidth="134.0" text="Login" />
             <Button layoutX="365.0" layoutY="327.0" mnemonicParsing="false" onAction="#onSignInRequest" prefHeight="25.0" prefWidth="127.0" text="Sign in" />
          </children>
       </AnchorPane>
-      <AnchorPane fx:id="tableViewPane" prefHeight="609.0" prefWidth="1000.0">
+      <AnchorPane fx:id="mainPane" prefHeight="609.0" prefWidth="1000.0" visible="false">
          <children>
             <ToolBar nodeOrientation="RIGHT_TO_LEFT" prefHeight="40.0" prefWidth="1000.0">
               <items>
@@ -34,11 +34,11 @@
                   <Button fx:id="addButton" onAction="#onAddFileRequest" mnemonicParsing="false" text="Add" />
               </items>
             </ToolBar>
-            <TableView fx:id="fileTableView" layoutY="40.0" prefHeight="528.0" prefWidth="1000.0">
+            <TableView fx:id="tableView" layoutY="40.0" prefHeight="528.0" prefWidth="1000.0">
               <columns>
-                <TableColumn fx:id="fileNameColumn" prefWidth="75.0" text="Filename" />
+                <TableColumn fx:id="filenameColumn" prefWidth="75.0" text="Filename" />
                 <TableColumn fx:id="createdColumn" prefWidth="161.0" text="Created" />
-                  <TableColumn fx:id="fileSizeColumn" prefWidth="504.0" text="File size" />
+                  <TableColumn fx:id="sizeColumn" prefWidth="504.0" text="File size" />
                   <TableColumn fx:id="cipherColumn" prefWidth="75.0" text="Cipher" />
                   <TableColumn fx:id="statusColumn" prefWidth="75.0" text="Status" />
               </columns>

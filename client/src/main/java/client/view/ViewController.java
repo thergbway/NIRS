@@ -4,8 +4,9 @@ import client.model.TableFile;
 import client.utils.ListenableFileInputStream;
 import client.utils.MainServiceAPIFinder;
 import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
+import javafx.collections.ListChangeListener;
 import javafx.fxml.FXML;
-import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.control.*;
@@ -27,224 +28,114 @@ import nirs.api.model.UserInfo;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.URL;
 import java.util.Optional;
-import java.util.ResourceBundle;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 import static client.model.TableFileStatus.*;
 
-public class ViewController implements Initializable {
+public final class ViewController {
+
+    private final MainService mainService = MainServiceAPIFinder.findProxy();
+    public Label userInfoLabel;
+    public AnchorPane mainPane;
+    public AnchorPane welcomePane;
+    public TableView<TableFile> tableView;
+    public TableColumn<TableFile, String> statusColumn;
+    public TableColumn<TableFile, String> cipherColumn;
+    public TableColumn<TableFile, String> filenameColumn;
+    public TableColumn<TableFile, String> sizeColumn;
+    public TableColumn<TableFile, String> createdColumn;
+
+    public Button loginButton;
+    public Button downloadButton;
+
+    public TextField loginTextField;
+    public PasswordField passwordTextField;
+
+    private String sessionToken;
 
     @FXML
-    private Label userInfoLabel;
-    @FXML
-    private AnchorPane tableViewPane;
-    @FXML
-    private AnchorPane loginPane;
+    public void initialize() {
 
-    @FXML
-    private TableView<TableFile> fileTableView;
+        Consumer<KeyEvent> credentialVerifier = keyEvent -> {
+            if (loginTextField.getText().trim().isEmpty() || passwordTextField.getText().trim().isEmpty())
+                loginButton.setDisable(true);
+            else
+                loginButton.setDisable(false);
 
-    @FXML
-    private TableColumn<TableFile, String> statusColumn;
-    @FXML
-    private TableColumn<TableFile, String> cipherColumn;
-    @FXML
-    private TableColumn<TableFile, String> fileNameColumn;
-    @FXML
-    private TableColumn<TableFile, String> fileSizeColumn;
+            if (keyEvent.getCode().equals(KeyCode.ENTER))
+                loginButton.fire();
+        };
 
-    @FXML
-    private TableColumn<TableFile, String> createdColumn;
-    @FXML
-    private Button loginButton;
+        loginTextField
+            .setOnKeyReleased(credentialVerifier::accept);
 
-    @FXML
-    private TextField loginTextField;
-    @FXML
-    private PasswordField passwordTextField;
+        passwordTextField
+            .setOnKeyReleased(credentialVerifier::accept);
 
-    private ExecutorService executorService;
+        tableView.getSelectionModel().getSelectedItems().addListener((ListChangeListener<TableFile>) c -> {
+            if(tableView.getSelectionModel().getSelectedItems().size() == 1)
+                downloadButton.setDisable(false);
+            else downloadButton.setDisable(true);
+        });
 
-    private MainService mainService;
-
-    private String token;
-
-    public void onLogoutRequest() {
-        resetToken();
-        resetFileTableViewControls();
-        setLoginPaneVisible(true);
+        filenameColumn
+            .setCellValueFactory(param -> param.getValue().fileName);
+        createdColumn
+            .setCellValueFactory(param -> param.getValue().created);
+        sizeColumn
+            .setCellValueFactory(param -> param.getValue().size);
+        cipherColumn
+            .setCellValueFactory(param -> param.getValue().cipher);
+        statusColumn
+            .setCellValueFactory(param -> param.getValue().status);
     }
 
     public void onLoginRequest() {
         try {
-            token = mainService
-                    .getToken(loginTextField.getText().trim(), passwordTextField.getText().trim());
+            sessionToken = mainService
+                .getToken(loginTextField.getText().trim(), passwordTextField.getText().trim());
 
-            UserInfo userInfo = mainService
-                    .getUserInfo(token);
+            UserInfo userInfo = mainService.getUserInfo(sessionToken);
 
-            StringBuilder userInfoLabelTextBuilder = new StringBuilder(userInfo
-                    .getFirstName()
-                    .concat(" ")
-                    .concat(userInfo.getLastName()));
-
-            userInfoLabelTextBuilder
-                    .append(" (")
-                    .append(userInfo.getUsername())
-                    .append(", ")
-                    .append(userInfo.getEmail())
-                    .append(")");
+            StringBuilder userInfoLabelTextBuilder = new StringBuilder()
+                .append(userInfo.getFirstName())
+                .append(" ")
+                .append(userInfo.getLastName())
+                .append(" (")
+                .append(userInfo.getUsername())
+                .append(", ")
+                .append(userInfo.getEmail())
+                .append(")");
 
             userInfoLabel
-                    .setText(userInfoLabelTextBuilder.toString());
+                .setText(userInfoLabelTextBuilder.toString());
 
-            setColumnCellValueFactory();
+            loadTableViewContent();
 
-            loadFileTableViewContent();
-
-            setLoginPaneVisible(false);
+            welcomePane.setVisible(false);
+            mainPane.setVisible(true);
 
         } catch (InvalidCredentialsException | InvalidTokenException e) {
             showErrorAlert(e);
         }
     }
 
+    public void onLogoutRequest() {
+        mainPane.setVisible(false);
+
+        loginTextField
+            .clear();
+        passwordTextField
+            .clear();
+        loginButton
+            .setDisable(true);
+
+        welcomePane.setVisible(true);
+    }
+
     public void onSignInRequest() {
         showSignInAlert(null);
-    }
-
-    public void onDownloadFileRequest() {
-
-        TableFile selectedFile = fileTableView
-                .getSelectionModel()
-                .getSelectedItem();
-
-        if (selectedFile != null) downloadFile(selectedFile);
-
-    }
-
-    public void onAddFileRequest() {
-        uploadFile();
-    }
-
-    public void onDeleteFileRequest() {
-        if (fileTableView.getSelectionModel() != null)
-            deleteSelectedTableFile();
-    }
-
-    @Override
-    public void initialize(URL location, ResourceBundle resources) {
-
-        mainService = MainServiceAPIFinder
-                .findProxy();
-
-        executorService = Executors
-                .newFixedThreadPool(100);
-
-        loginTextField
-                .setOnKeyReleased(this::checkLoginButtonAvailability);
-        passwordTextField
-                .setOnKeyReleased(this::checkLoginButtonAvailability);
-
-        checkLoginButtonAvailability(null);
-
-        setLoginPaneVisible(true);
-    }
-
-    public void shutdownExecutorService() {
-        executorService
-                .shutdown();
-    }
-
-    private void setColumnCellValueFactory() {
-        fileNameColumn
-                .setCellValueFactory(param -> param.getValue().fileName);
-        createdColumn
-                .setCellValueFactory(param -> param.getValue().created);
-        fileSizeColumn
-                .setCellValueFactory(param -> param.getValue().size);
-        cipherColumn
-                .setCellValueFactory(param -> param.getValue().cipher);
-        statusColumn
-                .setCellValueFactory(param -> param.getValue().status);
-    }
-
-    private void setLoginPaneVisible(boolean isVisible) {
-        loginPane
-                .setVisible(isVisible);
-        tableViewPane
-                .setVisible(!isVisible);
-        if (isVisible)
-            resetLoginPaneControls();
-    }
-
-    private void showErrorAlert(Exception e) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-
-        alert.setTitle("Error!");
-        alert.setHeaderText(e.getMessage());
-        alert.setContentText("Please try again");
-
-        ((Stage) alert
-                .getDialogPane()
-                .getScene()
-                .getWindow())
-                .getIcons()
-                .add(new Image(getClass().getResource("/error.png").toString()));
-
-        alert.showAndWait();
-    }
-
-    private void checkLoginButtonAvailability(KeyEvent event) {
-        if (loginTextField.getText().isEmpty() || passwordTextField.getText().isEmpty()) {
-            loginButton
-                    .setDisable(true);
-        } else
-            loginButton
-                    .setDisable(false);
-
-        if (event != null && event.getCode().equals(KeyCode.ENTER))
-            loginButton.fire();
-    }
-
-    private void resetToken() {
-        token = null;
-    }
-
-    private void resetLoginPaneControls() {
-        loginTextField
-                .clear();
-        passwordTextField
-                .clear();
-        loginButton
-                .setDisable(true);
-    }
-
-    private void resetFileTableViewControls() {
-        userInfoLabel
-                .setText("");
-    }
-
-    private void loadFileTableViewContent() {
-        try {
-
-            fileTableView
-                    .getItems()
-                    .clear();
-
-            mainService
-                    .getFiles(token)
-                    .forEach(fileInfo ->
-                            fileTableView
-                                    .getItems()
-                                    .add(new TableFile(fileInfo.getFilename(), fileInfo.getCreatedTimestamp(), fileInfo.getSize(), fileInfo.getCipher(), fileInfo.getId())));
-        } catch (InvalidTokenException e) {
-            showErrorAlert(e);
-        }
     }
 
     private void showSignInAlert(UserInfo userInfo) {
@@ -254,19 +145,19 @@ public class ViewController implements Initializable {
         dialog.setTitle("Sign in");
 
         ((Stage) dialog
-                .getDialogPane()
-                .getScene()
-                .getWindow())
-                .getIcons()
-                .add(new Image(getClass().getResource("/new_account.png").toString()));
+            .getDialogPane()
+            .getScene()
+            .getWindow())
+            .getIcons()
+            .add(new Image(getClass().getResource("/new_account.png").toString()));
 
-        dialog.setHeaderText("Fill the forms below to sign in");
+        dialog.setHeaderText("Fill the form below to sign in");
 
         ButtonType createAccountButtonType = new ButtonType("Create account", ButtonBar.ButtonData.OK_DONE);
 
         dialog.getDialogPane()
-                .getButtonTypes()
-                .addAll(createAccountButtonType, ButtonType.CANCEL);
+            .getButtonTypes()
+            .addAll(createAccountButtonType, ButtonType.CANCEL);
 
         GridPane grid = new GridPane();
 
@@ -275,43 +166,37 @@ public class ViewController implements Initializable {
         grid.setPadding(new Insets(20, 45, 10, 10));
 
         TextField firstNameTextField = new TextField();
-        firstNameTextField
-                .setPromptText("first name");
+        firstNameTextField.setPromptText("first name");
 
         TextField lastNameTextField = new TextField();
-        lastNameTextField
-                .setPromptText("last name");
+        lastNameTextField.setPromptText("last name");
 
-        TextField userNameTextField = new TextField();
-        userNameTextField
-                .setPromptText("user name");
+        TextField usernameTextField = new TextField();
+        usernameTextField.setPromptText("user name");
 
         TextField emailTextField = new TextField();
-        emailTextField
-                .setPromptText("email");
+        emailTextField.setPromptText("email");
 
         PasswordField passwordField = new PasswordField();
-        passwordField
-                .setPromptText("password");
+        passwordField.setPromptText("password");
 
         PasswordField confirmPasswordField = new PasswordField();
-        confirmPasswordField
-                .setPromptText("confirm password");
+        confirmPasswordField.setPromptText("confirm password");
 
         if (userInfo != null) {
             firstNameTextField
-                    .setText(userInfo.getFirstName());
+                .setText(userInfo.getFirstName());
             lastNameTextField
-                    .setText(userInfo.getLastName());
-            userNameTextField
-                    .setText(userInfo.getUsername());
+                .setText(userInfo.getLastName());
+            usernameTextField
+                .setText(userInfo.getUsername());
             emailTextField
-                    .setText(userInfo.getEmail());
+                .setText(userInfo.getEmail());
         } else {
-            userNameTextField
-                    .setText(loginTextField.getText().trim());
+            usernameTextField
+                .setText(loginTextField.getText().trim());
             passwordField
-                    .setText(passwordTextField.getText().trim());
+                .setText(passwordTextField.getText().trim());
         }
 
         // x, y
@@ -321,7 +206,7 @@ public class ViewController implements Initializable {
         grid.add(lastNameTextField, 1, 1);
         grid.add(new Label("Last name: "), 0, 1);
 
-        grid.add(userNameTextField, 1, 2);
+        grid.add(usernameTextField, 1, 2);
         grid.add(new Label("Username: "), 0, 2);
 
         grid.add(emailTextField, 1, 3);
@@ -334,80 +219,32 @@ public class ViewController implements Initializable {
         grid.add(new Label("Confirm password: "), 0, 5);
 
         Node createAccountButton = dialog
-                .getDialogPane()
-                .lookupButton(createAccountButtonType);
+            .getDialogPane()
+            .lookupButton(createAccountButtonType);
 
         createAccountButton
-                .setDisable(true);
+            .setDisable(true);
 
-        {
-            firstNameTextField.textProperty().addListener((observable, oldValue, newValue) -> {
-                createAccountButton
-                        .setDisable(newValue.trim()
-                                // Short set check!
-                                .isEmpty() || lastNameTextField.getText().trim()
-                                .isEmpty() || userNameTextField.getText().trim()
-                                .isEmpty() || emailTextField.getText().trim()
-                                .isEmpty() || passwordField.getText().trim()
-                                .isEmpty() || confirmPasswordField.getText().trim()
-                                .isEmpty() || !passwordField.getText().trim()
-                                .equals(confirmPasswordField.getText().trim()));
-            });
+        ChangeListener<String> createAccountButtonAvailabilityChecker = (observable, oldValue, newValue) -> createAccountButton.setDisable(
+            firstNameTextField.getText().trim().isEmpty()
+                || lastNameTextField.getText().trim().isEmpty()
+                || usernameTextField.getText().trim().isEmpty()
+                || emailTextField.getText().trim().isEmpty()
+                || passwordField.getText().trim().isEmpty()
+                || confirmPasswordField.getText().trim().isEmpty()
+                || !passwordField.getText().trim().equals(confirmPasswordField.getText().trim()));
 
-            lastNameTextField.textProperty().addListener((observable, oldValue, newValue) -> {
-                createAccountButton
-                        .setDisable(newValue.trim()
-                                .isEmpty() || firstNameTextField.getText().trim()
-                                .isEmpty() || userNameTextField.getText().trim()
-                                .isEmpty() || emailTextField.getText().trim()
-                                .isEmpty() || passwordField.getText().trim()
-                                .isEmpty() || confirmPasswordField.getText().trim()
-                                .isEmpty() || !passwordField.getText().trim()
-                                .equals(confirmPasswordField.getText().trim()));
-            });
-
-            userNameTextField.textProperty().addListener((observable, oldValue, newValue) -> {
-                createAccountButton
-                        .setDisable(newValue.trim()
-                                .isEmpty() || lastNameTextField.getText().trim()
-                                .isEmpty() || firstNameTextField.getText().trim()
-                                .isEmpty() || emailTextField.getText().trim()
-                                .isEmpty() || passwordField.getText().trim()
-                                .isEmpty() || confirmPasswordField.getText().trim()
-                                .isEmpty() || !passwordField.getText().trim()
-                                .equals(confirmPasswordField.getText().trim()));
-            });
-
-            passwordField.textProperty().addListener((observable, oldValue, newValue) -> {
-                createAccountButton
-                        .setDisable(newValue.trim()
-                                .isEmpty() || lastNameTextField.getText().trim()
-                                .isEmpty() || userNameTextField.getText().trim()
-                                .isEmpty() || firstNameTextField.getText().trim()
-                                .isEmpty() || emailTextField.getText().trim()
-                                .isEmpty() || confirmPasswordField.getText().trim()
-                                .isEmpty() || !passwordField.getText().trim()
-                                .equals(confirmPasswordField.getText().trim()));
-            });
-
-            confirmPasswordField.textProperty().addListener((observable, oldValue, newValue) -> {
-                createAccountButton
-                        .setDisable(newValue.trim()
-                                .isEmpty() || lastNameTextField.getText().trim()
-                                .isEmpty() || userNameTextField.getText().trim()
-                                .isEmpty() || firstNameTextField.getText().trim()
-                                .isEmpty() || emailTextField.getText().trim()
-                                .isEmpty() || passwordField.getText().trim()
-                                .isEmpty() || !passwordField.getText().trim()
-                                .equals(confirmPasswordField.getText().trim()));
-            });
-        }
+        firstNameTextField.textProperty().addListener(createAccountButtonAvailabilityChecker::changed);
+        lastNameTextField.textProperty().addListener(createAccountButtonAvailabilityChecker::changed);
+        usernameTextField.textProperty().addListener(createAccountButtonAvailabilityChecker::changed);
+        passwordField.textProperty().addListener(createAccountButtonAvailabilityChecker::changed);
+        confirmPasswordField.textProperty().addListener(createAccountButtonAvailabilityChecker::changed);
 
         dialog.getDialogPane()
-                .setContent(grid);
+            .setContent(grid);
 
         dialog.setResultConverter(dialogButton ->
-                dialogButton == createAccountButtonType);
+            dialogButton == createAccountButtonType);
 
         Optional<Boolean> result = dialog.showAndWait();
 
@@ -415,158 +252,202 @@ public class ViewController implements Initializable {
             if (isCreateAccountButtonClicked) {
                 try {
                     mainService
-                            .addNewUser(userNameTextField.getText().trim(), passwordField.getText(), firstNameTextField.getText().trim(), lastNameTextField.getText().trim(), emailTextField.getText().trim());
+                        .addNewUser(usernameTextField.getText().trim(), passwordField.getText(),
+                            firstNameTextField.getText().trim(), lastNameTextField.getText().trim(),
+                            emailTextField.getText().trim());
                     loginTextField
-                            .setText(userNameTextField.getText().trim());
+                        .setText(usernameTextField.getText().trim());
                     passwordTextField
-                            .setText(passwordField.getText().trim());
-                    checkLoginButtonAvailability(null);
+                        .setText(passwordField.getText().trim());
                 } catch (UserExistsException e) {
                     showErrorAlert(e);
                     showSignInAlert(UserInfo.builder()
-                            .firstName(firstNameTextField.getText().trim())
-                            .lastName(lastNameTextField.getText().trim())
-                            .email(emailTextField.getText().trim())
-                            .build());
+                        .firstName(firstNameTextField.getText().trim())
+                        .lastName(lastNameTextField.getText().trim())
+                        .email(emailTextField.getText().trim())
+                        .build());
                 } catch (EmailExistsException e) {
                     showErrorAlert(e);
                     showSignInAlert(UserInfo.builder()
-                            .firstName(firstNameTextField.getText().trim())
-                            .lastName(lastNameTextField.getText().trim())
-                            .username(userNameTextField.getText().trim())
-                            .build());
+                        .firstName(firstNameTextField.getText().trim())
+                        .lastName(lastNameTextField.getText().trim())
+                        .username(usernameTextField.getText().trim())
+                        .build());
                 }
             }
         });
     }
 
-    private void downloadFile(TableFile selectedFile) {
+    public void onDownloadFileRequest() {
+
+        TableFile selectedFile = tableView
+            .getSelectionModel()
+            .getSelectedItem();
 
         FileChooser fileChooser = new FileChooser();
 
         fileChooser
-                .setInitialFileName(selectedFile.fileName.get());
+            .setInitialFileName(selectedFile.fileName.get());
 
         fileChooser
-                .setTitle("Save file");
+            .setTitle("Save file");
 
         File fileToSave = fileChooser
-                .showSaveDialog(new Stage());
+            .showSaveDialog(new Stage());
 
         if (fileToSave != null)
-            showChooseCipherAlert()
-                    .ifPresent(cipher ->
-                            showCipherKeyAlert()
-                                    .ifPresent(key -> {
+                    showCipherKeyAlert()
+                        .ifPresent(key -> {
 
-                                        selectedFile
-                                                .status
-                                                .set(String.valueOf(DECRYPTING));
+                            selectedFile
+                                .status
+                                .set(String.valueOf(DECRYPTING));
 
-                                        Consumer<Integer> progressConsumer = progress ->
-                                                selectedFile
-                                                        .status
-                                                        .set(String.valueOf(DOWNLOADING).concat(" ").concat(String.valueOf(progress).concat("%")));
+                            Consumer<Integer> progressConsumer = progress ->
+                                selectedFile
+                                    .status
+                                    .set(String.valueOf(DOWNLOADING).concat(" ").concat(String.valueOf(progress).concat("%")));
 
-                                        executorService.execute(() -> {
+                            new Thread(() -> {
 
-                                            try (FileOutputStream fileOutputStream = new FileOutputStream(fileToSave)) {
+                                try (FileOutputStream fileOutputStream = new FileOutputStream(fileToSave)) {
 
-                                                int offset = 0;
+                                    int offset = 0;
 
-                                                double factor = 100.0 / selectedFile
-                                                        .getFileSize();
+                                    double factor = 100.0 / selectedFile.getFileSize();
 
-                                                long lastCheckTimeMillis = System
-                                                        .currentTimeMillis();
+                                    long lastCheckTimeMillis = System.currentTimeMillis();
 
-                                                do {
+                                    byte[] filePart;
+                                    do {
 
-                                                    byte[] filePart = mainService
-                                                            .downloadFilePart(token, selectedFile.getId(), offset);
+                                        filePart = mainService
+                                            .downloadFilePart(sessionToken, selectedFile.getId(), offset);
 
-                                                    fileOutputStream
-                                                            .write(filePart);
+                                        fileOutputStream
+                                            .write(filePart);
 
-                                                    long currentTimeMillis = System
-                                                            .currentTimeMillis();
+                                        long currentTimeMillis = System.currentTimeMillis();
 
-                                                    if ((currentTimeMillis - lastCheckTimeMillis) > 50L) {
-                                                        progressConsumer
-                                                                .accept((int)((double) offset * factor));
+                                        if ((currentTimeMillis - lastCheckTimeMillis) > 50L) {
+                                            progressConsumer.accept((int) ((double) offset * factor));
 
-                                                        lastCheckTimeMillis = currentTimeMillis;
-                                                    }
+                                            lastCheckTimeMillis = currentTimeMillis;
+                                        }
 
-                                                    offset += filePart.length;
+                                        offset += filePart.length;
 
 
-                                                } while (offset < selectedFile.getFileSize());
+                                    } while (filePart.length != 0);
 
-                                                selectedFile
-                                                        .status
-                                                        .set(String.valueOf(OK));
+                                    selectedFile
+                                        .status
+                                        .set(String.valueOf(OK));
 
-                                            } catch (IOException | InvalidTokenException e) {
-                                                showErrorAlert(e);
-                                            }
+                                } catch (IOException | InvalidTokenException e) {
+                                    showErrorAlert(e);
+                                }
+                            }).start();
 
-                                        });
-
-                                    }));
-
+                        });
     }
 
+    //todo
+    public void onAddFileRequest() {
+        uploadFile();
+    }
+    //todo
+    public void onDeleteFileRequest() {
+        if (tableView.getSelectionModel() != null)
+            deleteSelectedTableFile();
+    }
+    //todo
+    private void showErrorAlert(Exception e) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+
+        alert.setTitle("Error!");
+        alert.setHeaderText(e.getMessage());
+        alert.setContentText("Please try again");
+
+        Stage alertWindowStage = (Stage) alert
+            .getDialogPane()
+            .getScene()
+            .getWindow();
+
+        alertWindowStage
+            .getIcons()
+            .add(new Image(getClass().getResource("/error.png").toString()));
+
+        alert.showAndWait();
+    }
+    //todo
+    private void loadTableViewContent() {
+        try {
+
+            tableView
+                .getItems()
+                .clear();
+
+            mainService
+                .getFiles(sessionToken)
+                .forEach(fileInfo ->
+                    tableView
+                        .getItems()
+                        .add(new TableFile(fileInfo.getFilename(), fileInfo.getCreatedTimestamp(), fileInfo.getSize(), fileInfo.getCipher(), fileInfo.getId())));
+        } catch (InvalidTokenException e) {
+            showErrorAlert(e);
+        }
+    }
+    //todo
     private void uploadFile() {
 
         FileChooser fileChooser = new FileChooser();
 
         fileChooser
-                .setTitle("Choose file to upload");
+            .setTitle("Choose file to upload");
 
         File fileToUpload = fileChooser
-                .showOpenDialog(new Stage());
+            .showOpenDialog(new Stage());
 
         if (fileToUpload != null)
             showChooseCipherAlert()
-                    .ifPresent(cipher ->
-                            showCipherKeyAlert()
-                                    .ifPresent(key -> {
+                .ifPresent(cipher ->
+                    showCipherKeyAlert()
+                        .ifPresent(key -> {
 
-                                        TableFile tableFile = new TableFile(fileToUpload.getName(), 0L, 0L, cipher, null);
+                            TableFile tableFile = new TableFile(fileToUpload.getName(), 0L, 0L, cipher, null);
 
-                                        fileTableView
-                                                .getItems()
-                                                .add(tableFile);
+                            tableView
+                                .getItems()
+                                .add(tableFile);
 
-                                        tableFile
-                                                .status
-                                                .set(String.valueOf(ENCRYPTING));
+                            tableFile
+                                .status
+                                .set(String.valueOf(ENCRYPTING));
 
-                                        Consumer<Integer> progressConsumer = progress ->
-                                                tableFile
-                                                        .status
-                                                        .set(String.valueOf(UPLOADING).concat(" ").concat(String.valueOf(progress)).concat("%"));
+                            Consumer<Integer> progressConsumer = progress ->
+                                tableFile
+                                    .status
+                                    .set(String.valueOf(UPLOADING).concat(" ").concat(String.valueOf(progress)).concat("%"));
 
-                                        executorService
-                                                .execute(() -> {
+                            new Thread(() -> {
 
-                                                    try {
+                                try {
 
-                                                        tableFile
-                                                                .update(mainService
-                                                                .uploadFile(token, fileToUpload.getName(), cipher, ListenableFileInputStream.newListenableStream(fileToUpload, progressConsumer)));
+                                    tableFile
+                                        .update(mainService
+                                            .uploadFile(sessionToken, fileToUpload.getName(), cipher, ListenableFileInputStream.newListenableStream(fileToUpload, progressConsumer)));
 
-                                                        tableFile
-                                                                .status
-                                                                .set(String.valueOf(OK));
+                                    tableFile
+                                        .status
+                                        .set(String.valueOf(OK));
 
-                                                    } catch (InvalidTokenException | IOException e) {
-                                                        showErrorAlert(e);
-                                                    }
+                                } catch (InvalidTokenException | IOException e) {
+                                    showErrorAlert(e);
+                                }
 
-                                                });
-                                    }));
+                            }).start();
+                        }));
     }
 
     private Optional<Cipher> showChooseCipherAlert() {
@@ -584,14 +465,14 @@ public class ViewController implements Initializable {
         // Create the custom dialog.
         Dialog<String> dialog = new Dialog<>();
 
-        dialog.setTitle("Login Dialog");
-        dialog.setHeaderText("Look, a Custom Login Dialog");
+        dialog.setTitle("Key");
+        dialog.setHeaderText("Type symmetric key");
 
         ButtonType okButtonType = new ButtonType("Ok", ButtonBar.ButtonData.OK_DONE);
 
         dialog.getDialogPane()
-                .getButtonTypes()
-                .addAll(okButtonType, ButtonType.CANCEL);
+            .getButtonTypes()
+            .addAll(okButtonType, ButtonType.CANCEL);
 
         GridPane grid = new GridPane();
         grid.setHgap(10);
@@ -600,25 +481,25 @@ public class ViewController implements Initializable {
 
         PasswordField symmetricKeyTextField = new PasswordField();
         symmetricKeyTextField
-                .setPromptText("Key");
+            .setPromptText("Key");
 
         grid.add(new Label("Symmetric key:"), 0, 1);
         grid.add(symmetricKeyTextField, 1, 1);
 
         Node okButton = dialog
-                .getDialogPane()
-                .lookupButton(okButtonType);
+            .getDialogPane()
+            .lookupButton(okButtonType);
 
         okButton.setDisable(true);
 
         symmetricKeyTextField
-                .textProperty()
-                .addListener((observable, oldValue, newValue) -> {
-                    okButton.setDisable(newValue.trim().isEmpty());
-                });
+            .textProperty()
+            .addListener((observable, oldValue, newValue) -> {
+                okButton.setDisable(newValue.trim().isEmpty());
+            });
 
         dialog.getDialogPane()
-                .setContent(grid);
+            .setContent(grid);
 
         Platform.runLater(symmetricKeyTextField::requestFocus);
 
@@ -626,25 +507,25 @@ public class ViewController implements Initializable {
             if (dialogButton == okButtonType) {
                 return symmetricKeyTextField.getText();
             }
-            return null;
+            return null;//fixme may be NPE
         });
 
         return dialog
-                .showAndWait()
-                .map(String::getBytes);
+            .showAndWait()
+            .map(String::getBytes);
     }
-
+    //todo
     private void deleteSelectedTableFile() {
         try {
-            TableView.TableViewSelectionModel<TableFile> selectionModel = fileTableView
-                    .getSelectionModel();
+            TableView.TableViewSelectionModel<TableFile> selectionModel = tableView
+                .getSelectionModel();
             mainService
-                    .deleteFile(token, selectionModel
-                            .getSelectedItem()
-                            .getId());
-            fileTableView
-                    .getItems()
-                    .remove(selectionModel.getFocusedIndex());
+                .deleteFile(sessionToken, selectionModel
+                    .getSelectedItem()
+                    .getId());
+            tableView
+                .getItems()
+                .remove(selectionModel.getFocusedIndex());
         } catch (InvalidTokenException e) {
             showErrorAlert(e);
         }
