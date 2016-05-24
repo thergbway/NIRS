@@ -459,6 +459,10 @@ public class ViewController implements Initializable {
                             showCipherKeyAlert()
                                     .ifPresent(key -> {
 
+                                        selectedFile
+                                                .status
+                                                .set(String.valueOf(DECRYPTING));
+
                                         Consumer<Integer> progressConsumer = progress ->
                                                 selectedFile
                                                         .status
@@ -470,19 +474,34 @@ public class ViewController implements Initializable {
 
                                                 int offset = 0;
 
-                                                byte[] filePart;
+                                                double factor = 100.0 / selectedFile
+                                                        .getFileSize();
 
-                                                selectedFile.size.get();
+                                                long lastCheckTimeMillis = System
+                                                        .currentTimeMillis();
 
                                                 do {
-                                                    filePart = mainService
+
+                                                    byte[] filePart = mainService
                                                             .downloadFilePart(token, selectedFile.getId(), offset);
 
                                                     fileOutputStream
                                                             .write(filePart);
 
+                                                    long currentTimeMillis = System
+                                                            .currentTimeMillis();
+
+                                                    if ((currentTimeMillis - lastCheckTimeMillis) > 50L) {
+                                                        progressConsumer
+                                                                .accept((int)((double) offset * factor));
+
+                                                        lastCheckTimeMillis = currentTimeMillis;
+                                                    }
+
                                                     offset += filePart.length;
-                                                } while (filePart.length != 0);
+
+
+                                                } while (offset < selectedFile.getFileSize());
 
                                                 selectedFile
                                                         .status
@@ -491,6 +510,7 @@ public class ViewController implements Initializable {
                                             } catch (IOException | InvalidTokenException e) {
                                                 showErrorAlert(e);
                                             }
+
                                         });
 
                                     }));
@@ -513,15 +533,15 @@ public class ViewController implements Initializable {
                             showCipherKeyAlert()
                                     .ifPresent(key -> {
 
-                                        TableFile tableFile = new TableFile(fileToUpload.getName(), -1L, -1L, cipher, null);
-
-                                        tableFile
-                                                .status
-                                                .set(String.valueOf(ENCRYPTING));
+                                        TableFile tableFile = new TableFile(fileToUpload.getName(), 0L, 0L, cipher, null);
 
                                         fileTableView
                                                 .getItems()
                                                 .add(tableFile);
+
+                                        tableFile
+                                                .status
+                                                .set(String.valueOf(ENCRYPTING));
 
                                         Consumer<Integer> progressConsumer = progress ->
                                                 tableFile
@@ -533,15 +553,13 @@ public class ViewController implements Initializable {
 
                                                     try {
 
-                                                        tableFile.setId(mainService
-                                                                .uploadFile(token, fileToUpload.getName(), Cipher.AES256, ListenableFileInputStream.newListenableStream(fileToUpload, progressConsumer))
-                                                                .getId());
+                                                        tableFile
+                                                                .update(mainService
+                                                                .uploadFile(token, fileToUpload.getName(), cipher, ListenableFileInputStream.newListenableStream(fileToUpload, progressConsumer)));
 
                                                         tableFile
                                                                 .status
                                                                 .set(String.valueOf(OK));
-
-                                                        loadFileTableViewContent();
 
                                                     } catch (InvalidTokenException | IOException e) {
                                                         showErrorAlert(e);
@@ -617,8 +635,18 @@ public class ViewController implements Initializable {
     }
 
     private void deleteSelectedTableFile() {
-        fileTableView
-                .getSelectionModel()
-                .getSelectedItem();
+        try {
+            TableView.TableViewSelectionModel<TableFile> selectionModel = fileTableView
+                    .getSelectionModel();
+            mainService
+                    .deleteFile(token, selectionModel
+                            .getSelectedItem()
+                            .getId());
+            fileTableView
+                    .getItems()
+                    .remove(selectionModel.getFocusedIndex());
+        } catch (InvalidTokenException e) {
+            showErrorAlert(e);
+        }
     }
 }

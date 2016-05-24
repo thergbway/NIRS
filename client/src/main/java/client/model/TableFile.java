@@ -2,6 +2,7 @@ package client.model;
 
 import javafx.beans.property.SimpleStringProperty;
 import nirs.api.Cipher;
+import nirs.api.model.FileInfo;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -38,6 +39,13 @@ public class TableFile {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public void update(FileInfo fileInfo) {
+        fileName.set(fileInfo.getFilename());
+        created.set(LocalDateTime.ofEpochSecond(fileInfo.getCreatedTimestamp(), 0, ZoneOffset.UTC).toString());
+        size.set(convertToHumanReadable(fileInfo.getSize()));
+        cipher.set(String.valueOf(fileInfo.getCipher()));
     }
 
     private String convertToHumanReadable(Long size) {

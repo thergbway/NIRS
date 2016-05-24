@@ -45,7 +45,7 @@ public final class ListenableFileInputStream extends InputStream {
         if ((currentTimeMillis - lastCheckTimeMillis) > 50L) {
 
             progressConsumer
-                    .accept((int) ((double)readBytes * factor));
+                    .accept((int)((double) readBytes * factor));
 
             lastCheckTimeMillis = currentTimeMillis;
         }
