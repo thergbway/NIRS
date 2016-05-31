@@ -23,15 +23,21 @@ import nirs.api.exceptions.EmailExistsException;
 import nirs.api.exceptions.InvalidCredentialsException;
 import nirs.api.exceptions.InvalidTokenException;
 import nirs.api.exceptions.UserExistsException;
+import nirs.api.model.FileInfo;
 import nirs.api.model.UserInfo;
+import org.apache.commons.codec.digest.DigestUtils;
 
+import javax.crypto.CipherInputStream;
+import javax.crypto.CipherOutputStream;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.InputStream;
+import java.util.Arrays;
 import java.util.Optional;
 import java.util.function.Consumer;
-
-import static client.model.TableFileStatus.*;
 
 public final class ViewController {
 
@@ -74,7 +80,7 @@ public final class ViewController {
             .setOnKeyReleased(credentialVerifier::accept);
 
         tableView.getSelectionModel().getSelectedItems().addListener((ListChangeListener<TableFile>) c -> {
-            if(tableView.getSelectionModel().getSelectedItems().size() == 1)
+            if (tableView.getSelectionModel().getSelectedItems().size() == 1)
                 downloadButton.setDisable(false);
             else downloadButton.setDisable(true);
         });
@@ -296,91 +302,206 @@ public final class ViewController {
             .showSaveDialog(new Stage());
 
         if (fileToSave != null)
-                    showCipherKeyAlert()
-                        .ifPresent(key -> {
+            showCipherKeyAlert()
+                .ifPresent(key -> {
 
-                            selectedFile
-                                .status
-                                .set(String.valueOf(DECRYPTING));
+                    Consumer<Integer> progressConsumer = progress ->
+                        selectedFile
+                            .status
+                            .set("DOWNLOADING " + String.valueOf(progress) + " % ");
 
-                            Consumer<Integer> progressConsumer = progress ->
+                    new Thread(() -> {
+                        try {
+                            selectedFile.status.set("PREPARING...");
+
+                            javax.crypto.Cipher cipher = null;
+                            SecretKeySpec secretKeySpec = null;
+
+                            Cipher fileCipher = Cipher.valueOf(selectedFile.cipher.get());
+                            switch (fileCipher) {
+                                case AES128:
+                                    cipher = javax.crypto.Cipher.getInstance("AES");
+                                    secretKeySpec = new SecretKeySpec(Arrays.copyOf(DigestUtils.sha256(key), 16),
+                                        "AES");
+                                    cipher.init(javax.crypto.Cipher.DECRYPT_MODE, secretKeySpec);
+                                    break;
+                                case AES256:
+                                    cipher = javax.crypto.Cipher.getInstance("AES");
+                                    secretKeySpec = new SecretKeySpec(Arrays.copyOf(DigestUtils.sha256(key), 16),
+                                        "AES");
+                                    cipher.init(javax.crypto.Cipher.DECRYPT_MODE, secretKeySpec);
+                                    break;
+                                case DES:
+                                    cipher = javax.crypto.Cipher.getInstance("DES/CBC/PKCS5Padding");
+                                    secretKeySpec = new SecretKeySpec(Arrays.copyOf(DigestUtils.sha256(key),8),
+                                        "DES");
+                                    cipher.init(javax.crypto.Cipher.DECRYPT_MODE, secretKeySpec,
+                                        new IvParameterSpec(new byte[]{1,2,3,4,5,6,7,8}));
+                                    break;
+                            }
+
+                            try (
+
+                                FileOutputStream fos = new FileOutputStream(fileToSave);
+                                CipherOutputStream cos = new CipherOutputStream(fos, cipher)
+                            ) {
+                                int offset = 0;
+
+                                double factor = 100.0 / selectedFile.getFileSize();
+
+                                long lastCheckTimeMillis = System.currentTimeMillis();
+
+                                byte[] filePart;
+                                do {
+
+                                    filePart = mainService
+                                        .downloadFilePart(sessionToken, selectedFile.getId(), offset);
+
+                                    cos.write(filePart);
+
+                                    long currentTimeMillis = System.currentTimeMillis();
+
+                                    if ((currentTimeMillis - lastCheckTimeMillis) > 50L) {
+                                        progressConsumer.accept((int) ((double) offset * factor));
+
+                                        lastCheckTimeMillis = currentTimeMillis;
+                                    }
+
+                                    offset += filePart.length;
+
+                                } while (filePart.length != 0);
+
                                 selectedFile
                                     .status
-                                    .set(String.valueOf(DOWNLOADING).concat(" ").concat(String.valueOf(progress).concat("%")));
+                                    .set("OK");
 
-                            new Thread(() -> {
+                            } catch (Exception e) {
+                                showErrorAlert(e);
+                            }
+                        } catch (Exception e) {
+                            showErrorAlert(e);
+                        }
+                    }).start();
 
-                                try (FileOutputStream fileOutputStream = new FileOutputStream(fileToSave)) {
-
-                                    int offset = 0;
-
-                                    double factor = 100.0 / selectedFile.getFileSize();
-
-                                    long lastCheckTimeMillis = System.currentTimeMillis();
-
-                                    byte[] filePart;
-                                    do {
-
-                                        filePart = mainService
-                                            .downloadFilePart(sessionToken, selectedFile.getId(), offset);
-
-                                        fileOutputStream
-                                            .write(filePart);
-
-                                        long currentTimeMillis = System.currentTimeMillis();
-
-                                        if ((currentTimeMillis - lastCheckTimeMillis) > 50L) {
-                                            progressConsumer.accept((int) ((double) offset * factor));
-
-                                            lastCheckTimeMillis = currentTimeMillis;
-                                        }
-
-                                        offset += filePart.length;
-
-
-                                    } while (filePart.length != 0);
-
-                                    selectedFile
-                                        .status
-                                        .set(String.valueOf(OK));
-
-                                } catch (IOException | InvalidTokenException e) {
-                                    showErrorAlert(e);
-                                }
-                            }).start();
-
-                        });
+                });
     }
 
     //todo
     public void onAddFileRequest() {
-        uploadFile();
+
+        FileChooser fileChooser = new FileChooser();
+
+        fileChooser
+            .setTitle("Choose file to upload");
+
+        File fileToUpload = fileChooser
+            .showOpenDialog(new Stage());
+
+        if (fileToUpload != null)
+            showChooseCipherAlert()
+                .ifPresent(cipherEnum ->
+                    showCipherKeyAlert()
+                        .ifPresent(key -> {
+
+                            TableFile tableFile = new TableFile(fileToUpload.getName(), 0L, 0L, cipherEnum, null, "N/A");
+
+                            tableView
+                                .getItems()
+                                .add(tableFile);
+
+                            Consumer<Integer> progressConsumer = progress ->
+                                tableFile
+                                    .status
+                                    .set("UPLOADING " + String.valueOf(progress) + "%");
+
+                            new Thread(() -> {
+                                try {
+                                    tableFile.status.set("PREPARING...");
+
+                                    javax.crypto.Cipher cipher = null;
+                                    SecretKeySpec secretKeySpec = null;
+
+                                    switch (cipherEnum) {
+                                        case AES128:
+                                            cipher = javax.crypto.Cipher.getInstance("AES");
+                                            secretKeySpec = new SecretKeySpec(Arrays.copyOf(DigestUtils.sha256(key), 16),
+                                                "AES");
+                                            cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, secretKeySpec);
+                                            break;
+                                        case AES256:
+                                            cipher = javax.crypto.Cipher.getInstance("AES");
+                                            secretKeySpec = new SecretKeySpec(Arrays.copyOf(DigestUtils.sha256(key), 16),
+                                                "AES");
+                                            cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, secretKeySpec);
+                                            break;
+                                        case DES:
+                                            cipher = javax.crypto.Cipher.getInstance("DES/CBC/PKCS5Padding");
+                                            secretKeySpec = new SecretKeySpec(Arrays.copyOf(DigestUtils.sha256(key),8),
+                                                "DES");
+                                            cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, secretKeySpec,
+                                                new IvParameterSpec(new byte[]{1,2,3,4,5,6,7,8}));
+                                            break;
+                                    }
+
+                                    InputStream fis = ListenableFileInputStream.newListenableStream(fileToUpload, progressConsumer);
+                                    BufferedInputStream bis = new BufferedInputStream(fis);
+                                    CipherInputStream cis = new CipherInputStream(bis, cipher);
+
+                                    FileInfo uploadFileInfo = mainService.uploadFile(sessionToken,
+                                        fileToUpload.getName(), cipherEnum,
+                                        cis);
+
+                                    tableFile.update(uploadFileInfo);
+
+                                    tableFile
+                                        .status
+                                        .set("OK");
+
+                                } catch (Exception e) {
+                                    showErrorAlert(e);
+                                }
+                            }).start();
+                        }));
     }
-    //todo
+
     public void onDeleteFileRequest() {
         if (tableView.getSelectionModel() != null)
-            deleteSelectedTableFile();
+            try {
+                TableView.TableViewSelectionModel<TableFile> selectionModel = tableView
+                    .getSelectionModel();
+                mainService
+                    .deleteFile(sessionToken, selectionModel
+                        .getSelectedItem()
+                        .getId());
+                tableView
+                    .getItems()
+                    .remove(selectionModel.getFocusedIndex());
+            } catch (InvalidTokenException e) {
+                showErrorAlert(e);
+            }
     }
-    //todo
+
     private void showErrorAlert(Exception e) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
 
-        alert.setTitle("Error!");
-        alert.setHeaderText(e.getMessage());
-        alert.setContentText("Please try again");
+            alert.setTitle("Error!");
+            alert.setHeaderText(e.getMessage());
+            alert.setContentText("Please try again");
 
-        Stage alertWindowStage = (Stage) alert
-            .getDialogPane()
-            .getScene()
-            .getWindow();
+            Stage alertWindowStage = (Stage) alert
+                .getDialogPane()
+                .getScene()
+                .getWindow();
 
-        alertWindowStage
-            .getIcons()
-            .add(new Image(getClass().getResource("/error.png").toString()));
+            alertWindowStage
+                .getIcons()
+                .add(new Image(getClass().getResource("/error.png").toString()));
 
-        alert.showAndWait();
+            alert.showAndWait();
+        });
     }
-    //todo
+
     private void loadTableViewContent() {
         try {
 
@@ -393,61 +514,11 @@ public final class ViewController {
                 .forEach(fileInfo ->
                     tableView
                         .getItems()
-                        .add(new TableFile(fileInfo.getFilename(), fileInfo.getCreatedTimestamp(), fileInfo.getSize(), fileInfo.getCipher(), fileInfo.getId())));
+                        .add(new TableFile(fileInfo.getFilename(), fileInfo.getCreatedTimestamp(),
+                            fileInfo.getSize(), fileInfo.getCipher(), fileInfo.getId(), "OK")));
         } catch (InvalidTokenException e) {
             showErrorAlert(e);
         }
-    }
-    //todo
-    private void uploadFile() {
-
-        FileChooser fileChooser = new FileChooser();
-
-        fileChooser
-            .setTitle("Choose file to upload");
-
-        File fileToUpload = fileChooser
-            .showOpenDialog(new Stage());
-
-        if (fileToUpload != null)
-            showChooseCipherAlert()
-                .ifPresent(cipher ->
-                    showCipherKeyAlert()
-                        .ifPresent(key -> {
-
-                            TableFile tableFile = new TableFile(fileToUpload.getName(), 0L, 0L, cipher, null);
-
-                            tableView
-                                .getItems()
-                                .add(tableFile);
-
-                            tableFile
-                                .status
-                                .set(String.valueOf(ENCRYPTING));
-
-                            Consumer<Integer> progressConsumer = progress ->
-                                tableFile
-                                    .status
-                                    .set(String.valueOf(UPLOADING).concat(" ").concat(String.valueOf(progress)).concat("%"));
-
-                            new Thread(() -> {
-
-                                try {
-
-                                    tableFile
-                                        .update(mainService
-                                            .uploadFile(sessionToken, fileToUpload.getName(), cipher, ListenableFileInputStream.newListenableStream(fileToUpload, progressConsumer)));
-
-                                    tableFile
-                                        .status
-                                        .set(String.valueOf(OK));
-
-                                } catch (InvalidTokenException | IOException e) {
-                                    showErrorAlert(e);
-                                }
-
-                            }).start();
-                        }));
     }
 
     private Optional<Cipher> showChooseCipherAlert() {
@@ -513,21 +584,5 @@ public final class ViewController {
         return dialog
             .showAndWait()
             .map(String::getBytes);
-    }
-    //todo
-    private void deleteSelectedTableFile() {
-        try {
-            TableView.TableViewSelectionModel<TableFile> selectionModel = tableView
-                .getSelectionModel();
-            mainService
-                .deleteFile(sessionToken, selectionModel
-                    .getSelectedItem()
-                    .getId());
-            tableView
-                .getItems()
-                .remove(selectionModel.getFocusedIndex());
-        } catch (InvalidTokenException e) {
-            showErrorAlert(e);
-        }
     }
 }

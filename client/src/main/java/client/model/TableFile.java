@@ -18,15 +18,15 @@ public class TableFile {
     private String id;
     private long fileSize;
 
-    public TableFile(String fileName, Long createdTimestamp, Long size, Cipher cipher, String id) {
+    public TableFile(String fileName, Long createdTimestamp, Long size, Cipher cipher, String id, String status) {
         this.id = id;
         this.fileName = new SimpleStringProperty(fileName);
         this.created = new SimpleStringProperty(LocalDateTime.ofEpochSecond(createdTimestamp, 0, ZoneOffset.UTC).toString());
         this.size = new SimpleStringProperty(convertToHumanReadable(size));
         this.cipher = new SimpleStringProperty(cipher.toString());
-        this.status = new SimpleStringProperty();
+        this.status = new SimpleStringProperty(status);
 
-        fileSize = size;
+        this.fileSize = size;
     }
 
     public long getFileSize() {
@@ -42,6 +42,7 @@ public class TableFile {
     }
 
     public void update(FileInfo fileInfo) {
+        id = fileInfo.getId();
         fileName.set(fileInfo.getFilename());
         created.set(LocalDateTime.ofEpochSecond(fileInfo.getCreatedTimestamp(), 0, ZoneOffset.UTC).toString());
         size.set(convertToHumanReadable(fileInfo.getSize()));
@@ -49,6 +50,6 @@ public class TableFile {
     }
 
     private String convertToHumanReadable(Long size) {
-        return String.format("%1.3f", size.doubleValue() / 1024.0 / 1024.0);
+        return String.format("%1.3f Mb", size.doubleValue() / 1024.0 / 1024.0);
     }
 }
